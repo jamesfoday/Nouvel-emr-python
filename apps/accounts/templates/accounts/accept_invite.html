@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<article>
+  <header>
+    <h2>Accept your invitation</h2>
+    <p>Email: <strong>{{ invite.email }}</strong> · Role: <strong>{{ invite.role.name }}</strong></p>
+  </header>
+  <form method="post" class="grid">
+    {% csrf_token %}
+    <label>Username {{ form.username }}</label>
+    <label>Display name (optional) {{ form.display_name }}</label>
+    <label>Password {{ form.password1 }}</label>
+    <label>Confirm password {{ form.password2 }}</label>
+    <button type="submit">Create account</button>
+  </form>
+</article>
+{% endblock %}
