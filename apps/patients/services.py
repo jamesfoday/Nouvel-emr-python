@@ -7,7 +7,7 @@ from .models import Patient
 # ---- Normalizers (I keep it simple for now; can swap to phonenumbers later) ----
 
 def normalize_email(value: str) -> str:
-    # I lowercase and strip whitespace to catch obvious duplicates.
+    # lowercase and strip whitespace to catch obvious duplicates.
     return (value or "").strip().lower()
 
 
@@ -58,7 +58,7 @@ def find_possible_duplicates(
             & Q(given_name__iexact=given_name.strip())
             & Q(date_of_birth=dob)
         )
-    return Patient.objects.filter(q).distinct()
+    return Patient.objects.filter(q, is_active=True).distinct()
 
 
 def score_duplicate(candidate: Patient, *, email: str, phone: str, given_name: str, family_name: str, dob):

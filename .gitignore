@@ -1,0 +1,80 @@
+# --- OS cruft ---
+.DS_Store
+Thumbs.db
+
+# --- Python basics ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.build/
+dist/
+build/
+pip-wheel-metadata/
+
+# --- Virtual envs ---
+.venv/
+venv/
+ENV/
+env/
+
+# --- Editors/IDEs ---
+.vscode/
+.idea/
+
+# --- Django ---
+# keep app migrations committed! (do NOT ignore */migrations/*.py)
+# local sqlite DBs stay out of Git
+db.sqlite3
+*.sqlite3
+# collectstatic output (generated at build/deploy)
+staticfiles/
+# user uploads (dev machines only)
+media/
+
+# --- Environment & secrets ---
+.env
+.env.*
+!*.example        # allow .env.example to be committed
+
+# --- Tests & coverage ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+
+# --- Type checking / linters ---
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+.pyre/
+
+# --- Logs & runtime files ---
+*.log
+logs/
+celerybeat-schedule*
+celerybeat.pid
+
+# --- IPython/Jupyter ---
+.ipynb_checkpoints/
+
+# --- Node 
+node_modules/
+.cache/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+.out/
+.next/
+
+# --- Misc ---
+__pypackages__/     # PEP 582
