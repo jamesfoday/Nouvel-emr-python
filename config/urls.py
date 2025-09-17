@@ -15,4 +15,6 @@ urlpatterns = [
      path("api/v1/auth/", include("apps.accounts.api_urls", namespace="accounts_api")),
       path("api/v1/", include("apps.patients.api_urls", namespace="patients_api")),
       path("api/auth/", include("apps.accounts.api_urls", namespace="auth_api")),
+      path("api/v1/", include("apps.appointments.api_urls", namespace="appointments_api")),
+
 ]
