@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import Appointment
+from .models import Availability
+
 
 class AppointmentSerializer(serializers.ModelSerializer):
     # I accept IDs for patient/clinician; DRF will map them to FKs.
@@ -35,3 +37,16 @@ class AppointmentRescheduleSerializer(serializers.Serializer):
         if attrs["end"] <= attrs["start"]:
             raise serializers.ValidationError({"end": "End must be after start."})
         return attrs
+
+
+
+class AvailabilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Availability
+        fields = ["id", "clinician", "weekday", "start_time", "end_time", "slot_minutes", "is_active"]
+
+class FreeSlotSerializer(serializers.Serializer):
+    start = serializers.DateTimeField()
+    end = serializers.DateTimeField()
+    duration_minutes = serializers.IntegerField()
+    clinician = serializers.IntegerField()
