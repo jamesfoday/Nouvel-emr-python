@@ -1,0 +1,8 @@
+# Treat these as text and normalize line endings
+* text=auto eol=lf
+
+# Improve diffs for common files
+*.md diff=markdown
+*.json diff=json
+*.yml diff=yaml
+*.yaml diff=yaml

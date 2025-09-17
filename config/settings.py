@@ -104,10 +104,18 @@ STORAGES = {
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "Nouvel API",
-    "VERSION": "1.0.0",
+    "VERSION": "0.2.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_SETTINGS": {
+    "persistAuthorization": True,        # want the padlock to remember auth on reload
+    "displayRequestDuration": True,      # like seeing timing in the UI
+    "tryItOutEnabled": True,             # ensure Try it out is present
+    },
 }
+
 
 # --- CORS (open in dev; I’ll lock this down in prod) ---
 CORS_ALLOW_ALL_ORIGINS = True
