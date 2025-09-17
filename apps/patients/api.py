@@ -7,6 +7,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.filters import SearchFilter, OrderingFilter  # ← DRF filters
 
 from drf_spectacular.utils import (
     extend_schema,
@@ -34,18 +35,23 @@ from .schemas import (
 
 @extend_schema_view(
     list=extend_schema(
-        summary="Search patients",
-        description="Quick search across family/given name, email, phone, external_id.",
+        summary="Search & list patients (paginated)",
+        description=(
+            "I support `q` search (name/email/phone/external_id), sorting via `sort`, "
+            "and limit/offset pagination."
+        ),
         parameters=[
+            OpenApiParameter(name="q", description="Search term", required=False, type=OpenApiTypes.STR),
             OpenApiParameter(
-                name="q",
-                description="Search term (e.g., name/email/phone).",
+                name="sort",
+                description="Order by field, prefix with '-' for desc (e.g., `family_name`, `-created_at`).",
                 required=False,
                 type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
-            )
+            ),
+            OpenApiParameter(name="limit", description="Page size (default 25)", required=False, type=OpenApiTypes.INT),
+            OpenApiParameter(name="offset", description="Offset for pagination", required=False, type=OpenApiTypes.INT),
         ],
-        responses={200: PatientSerializer(many=True)},
+        # I omit explicit responses here so drf-spectacular infers paginated wrapper.
     ),
     retrieve=extend_schema(
         summary="Get patient",
@@ -80,6 +86,22 @@ class PatientViewSet(viewsets.ModelViewSet):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
     permission_classes = [IsAuthenticated, roles_required("clinician", "staff", "admin")]
+
+    # 🔎 DRF filters (search + ordering + pagination via global settings)
+    filter_backends = [SearchFilter, OrderingFilter]
+    # I bias name searches to prefix for speed (`^` = startswith); email/phone are contains.
+    search_fields = ["^family_name", "^given_name", "email", "phone", "external_id"]
+    ordering_fields = [
+        "family_name",
+        "given_name",
+        "date_of_birth",
+        "created_at",
+        "updated_at",
+        "email",
+        "phone",
+        "id",
+    ]
+    ordering = ["family_name", "given_name", "id"]
 
     # ---- Helpers -------------------------------------------------------------
 
@@ -121,22 +143,22 @@ class PatientViewSet(viewsets.ModelViewSet):
         results.sort(key=lambda r: r["score"], reverse=True)
         return results
 
-    # ---- List/Search ---------------------------------------------------------
+    # ---- List/Search (now paginated) ----------------------------------------
 
     def list(self, request, *args, **kwargs):
+        # I let DRF filters handle search & ordering; I only log searches.
         q = request.query_params.get("q", "").strip()
-        qs = self.get_queryset()
+        qs = self.filter_queryset(self.get_queryset())
         if q:
-            from django.db.models import Q
-            qs = qs.filter(
-                Q(family_name__icontains=q)
-                | Q(given_name__icontains=q)
-                | Q(email__icontains=q)
-                | Q(phone__icontains=q)
-                | Q(external_id__icontains=q)
-            )
             log_event(request, "patient.search", "Patient", q)
-        return Response(PatientSerializer(qs[:100], many=True).data)
+
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
 
     # ---- Retrieve ------------------------------------------------------------
 

@@ -103,6 +103,23 @@ STORAGES = {
 # --- DRF & OpenAPI ---
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    # Pagination: limit/offset (limit defaults to PAGE_SIZE if omitted)
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+    "PAGE_SIZE": 25,
+    # Filters
+    "DEFAULT_FILTER_BACKENDS": [
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ],
+    # keep our param names human: q for search, sort for ordering
+    "SEARCH_PARAM": "q",
+    "ORDERING_PARAM": "sort",
 }
 
 SPECTACULAR_SETTINGS = {
