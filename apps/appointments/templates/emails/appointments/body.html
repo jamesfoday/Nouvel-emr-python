@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+  <body style="font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;">
+    <p>Hi {{ patient.given_name|default:"there" }},</p>
+
+    {% if kind == "created" %}
+      <p><strong>Your appointment is booked.</strong></p>
+    {% elif kind == "rescheduled" %}
+      <p><strong>Your appointment was rescheduled.</strong></p>
+    {% elif kind == "cancelled" %}
+      <p><strong>Your appointment was cancelled.</strong></p>
+    {% endif %}
+
+    <ul>
+      <li><strong>Clinician:</strong> {{ clinician.get_full_name|default:clinician.username }}</li>
+      <li><strong>Date:</strong> {{ start_date }}</li>
+      <li><strong>Time:</strong> {{ start_time }} – {{ end_time }}</li>
+      <li><strong>Location:</strong> {{ location|default:"" }}</li>
+      <li><strong>Reason:</strong> {{ reason|default:"" }}</li>
+    </ul>
+
+    <p>I’ve attached an <code>.ics</code> file so you can add this to your calendar in one tap.</p>
+    <p>— Nouvel</p>
+  </body>
+</html>

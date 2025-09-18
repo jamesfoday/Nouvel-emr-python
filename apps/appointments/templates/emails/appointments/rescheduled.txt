@@ -1,0 +1,12 @@
+Subject: Your appointment was rescheduled
+
+Hi {{ patient_name }},
+
+Your appointment has been rescheduled.
+
+New time: {{ start_local }} – {{ end_local }} ({{ tzname }})
+Clinician: {{ clinician_name }}
+Location: {{ location|default:"—" }}
+Reason: {{ reason|default:"—" }}
+
+We’ve attached an updated .ics calendar file.

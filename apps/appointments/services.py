@@ -1,35 +1,23 @@
 # apps/appointments/services.py
 from __future__ import annotations
 
-from datetime import datetime, timedelta, time
-from typing import List, Dict, Optional
+from datetime import datetime, date, timedelta
+from typing import Iterable, List, Dict, Optional
 
 from django.db.models import Q
 from django.utils import timezone
 
 from .models import Appointment, Availability
 
-# only consider these as "blocking" for conflicts & free-slot calc.
-ACTIVE_STATUSES = ("scheduled", "confirmed")
+# Only these statuses block the calendar
+ACTIVE_STATUSES = {"scheduled", "confirmed"}
 
 
-def _ensure_aware(dt: datetime, tz=None) -> datetime:
-    """
-    I normalize any datetime to be timezone-aware in the project TZ.
-    """
-    if dt is None:
+def _aware(dt: datetime) -> datetime:
+    """Make a naive datetime aware in the current timezone."""
+    if timezone.is_aware(dt):
         return dt
-    if dt.tzinfo is not None:
-        return dt
-    tz = tz or timezone.get_current_timezone()
-    return timezone.make_aware(dt, tz)
-
-
-def _overlaps(a_start: datetime, a_end: datetime, b_start: datetime, b_end: datetime) -> bool:
-    """
-    I use the [start, end) convention; end == start is OK.
-    """
-    return a_start < b_end and b_start < a_end
+    return timezone.make_aware(dt, timezone.get_current_timezone())
 
 
 def conflicting_appointments(
@@ -41,111 +29,138 @@ def conflicting_appointments(
     exclude_id: Optional[int] = None,
 ):
     """
-    I return a queryset of appointments that overlap the given window for either the clinician or the patient.
-    I ignore cancelled/completed and I can optionally exclude one appointment by id.
+    Return a queryset of active appointments that overlap [start,end)
+    for either the clinician or the patient.
     """
-    tz = timezone.get_current_timezone()
-    start = _ensure_aware(start, tz)
-    end = _ensure_aware(end, tz)
+    start = _aware(start)
+    end = _aware(end)
 
     q = (
         Q(status__in=ACTIVE_STATUSES)
-        & (Q(clinician_id=clinician_id) | Q(patient_id=patient_id))
         & Q(start__lt=end, end__gt=start)  # overlap rule
+        & (Q(clinician_id=clinician_id) | Q(patient_id=patient_id))
     )
-
     qs = Appointment.objects.filter(q)
     if exclude_id:
         qs = qs.exclude(id=exclude_id)
     return qs.select_related("patient", "clinician").order_by("start")
 
 
-def get_free_slots(
+# -------- Availability expansion & suggestions --------
+
+def _date_iter(d0: date, d1: date):
+    """Inclusive date iterator."""
+    step = timedelta(days=1)
+    d = d0
+    while d <= d1:
+        yield d
+        d += step
+
+
+def _windows_for_range(
     *,
     clinician_id: int,
     date_from: datetime,
     date_to: datetime,
-    slot_minutes: Optional[int] = None,
-    max_results: int = 100,
+):
+    """
+    Expand weekly availability windows into concrete [start,end) ranges
+    over the given date interval. Yields (start_dt, end_dt, slot_minutes).
+    """
+    df = _aware(date_from)
+    dt = _aware(date_to)
+    tz = timezone.get_current_timezone()
+
+    windows = list(
+        Availability.objects.filter(
+            clinician_id=clinician_id,
+            is_active=True,
+        ).only("weekday", "start_time", "end_time", "slot_minutes")
+    )
+
+    by_weekday: dict[int, list[Availability]] = {}
+    for w in windows:
+        by_weekday.setdefault(w.weekday, []).append(w)
+
+    for day in _date_iter(df.date(), dt.date()):
+        wd = day.weekday()  # 0..6
+        day_windows = by_weekday.get(wd, [])
+        if not day_windows:
+            continue
+        for w in day_windows:
+            start_dt = timezone.make_aware(datetime.combine(day, w.start_time), tz)
+            end_dt = timezone.make_aware(datetime.combine(day, w.end_time), tz)
+            # clamp to requested range
+            start_dt = max(start_dt, df)
+            end_dt = min(end_dt, dt)
+            if start_dt < end_dt:
+                yield start_dt, end_dt, int(w.slot_minutes or 30)
+
+
+def _has_conflict(
+    *,
+    clinician_id: int,
+    patient_id: Optional[int],
+    start: datetime,
+    end: datetime,
+    exclude_id: Optional[int] = None,
+) -> bool:
+    """True if [start,end) overlaps any active appts for clinician or patient."""
+    q = Q(status__in=ACTIVE_STATUSES) & Q(start__lt=end, end__gt=start) & (
+        Q(clinician_id=clinician_id) | (Q(patient_id=patient_id) if patient_id else Q())
+    )
+    qs = Appointment.objects.filter(q)
+    if exclude_id:
+        qs = qs.exclude(id=exclude_id)
+    return qs.exists()
+
+
+def suggest_free_slots(
+    *,
+    clinician_id: int,
+    date_from: datetime,
+    date_to: datetime,
+    duration_minutes: int,
+    step_minutes: Optional[int] = None,
+    patient_id: Optional[int] = None,
+    limit: int = 50,
+    exclude_appointment_id: Optional[int] = None,
 ) -> List[Dict]:
     """
-    I generate conflict-free slots for a clinician within [date_from, date_to).
-    I respect weekly Availability templates and skip overlapping appointments.
-    Returns items shaped for FreeSlotSerializer: {start, end, duration_minutes, clinician}.
+    Generate free slots between date_from and date_to based on weekly availability,
+    avoiding overlaps with existing appointments.
     """
-    tz = timezone.get_current_timezone()
-    date_from = _ensure_aware(date_from, tz)
-    date_to = _ensure_aware(date_to, tz)
+    df = _aware(date_from)
+    dt = _aware(date_to)
+    duration = timedelta(minutes=int(duration_minutes))
+    out: List[Dict] = []
 
-    if date_from >= date_to:
-        return []
+    for win_start, win_end, default_step in _windows_for_range(
+        clinician_id=clinician_id, date_from=df, date_to=dt
+    ):
+        step = timedelta(minutes=int(step_minutes or default_step))
+        cur = win_start
+        while cur + duration <= win_end:
+            slot_start = cur
+            slot_end = cur + duration
 
-    # Prefetch existing active appointments overlapping the range (skip cancelled/completed).
-    appts = list(
-        Appointment.objects.filter(
-            clinician_id=clinician_id,
-            status__in=ACTIVE_STATUSES,
-            start__lt=date_to,
-            end__gt=date_from,
-        )
-        .only("id", "start", "end", "status")
-        .order_by("start")
-    )
+            if not _has_conflict(
+                clinician_id=clinician_id,
+                patient_id=patient_id,
+                start=slot_start,
+                end=slot_end,
+                exclude_id=exclude_appointment_id,
+            ):
+                out.append(
+                    {
+                        "start": slot_start,
+                        "end": slot_end,
+                        "duration_minutes": duration_minutes,
+                        "clinician": clinician_id,
+                    }
+                )
+                if len(out) >= limit:
+                    return out
+            cur += step
 
-    # Pull weekly availability windows
-    windows = list(
-        Availability.objects.filter(clinician_id=clinician_id, is_active=True)
-        .order_by("weekday", "start_time")
-    )
-    if not windows:
-        return []
-
-    results: List[Dict] = []
-
-    # Iterate day by day
-    cur = date_from
-    while cur < date_to and len(results) < max_results:
-        cur_date = cur.astimezone(tz).date()  # day in local tz
-        weekday = cur_date.weekday()  # 0..6
-        day_windows = [w for w in windows if w.weekday == weekday]
-
-        for w in day_windows:
-            # default slot size comes from window unless caller overrides
-            sm = int(slot_minutes or w.slot_minutes)
-
-            # Build the day's availability range in TZ
-            day_start_naive = datetime.combine(cur_date, w.start_time)
-            day_end_naive = datetime.combine(cur_date, w.end_time)
-            day_start = _ensure_aware(day_start_naive, tz)
-            day_end = _ensure_aware(day_end_naive, tz)
-
-            # Clamp to requested overall range
-            rng_start = max(day_start, date_from)
-            rng_end = min(day_end, date_to)
-            if rng_start >= rng_end:
-                continue
-
-            t = rng_start
-            while (t + timedelta(minutes=sm)) <= rng_end and len(results) < max_results:
-                s = t
-                e = t + timedelta(minutes=sm)
-
-                # Skip if overlaps any active appointment
-                if not any(_overlaps(s, e, a.start, a.end) for a in appts):
-                    results.append(
-                        {
-                            "start": s,
-                            "end": e,
-                            "duration_minutes": sm,
-                            "clinician": clinician_id,
-                        }
-                    )
-
-                # Step to next slot
-                t = e
-
-        # Move to next day at 00:00 in TZ
-        next_midnight_naive = datetime.combine(cur_date + timedelta(days=1), time(0, 0))
-        cur = _ensure_aware(next_midnight_naive, tz)
-
-    return results[:max_results]
+    return out

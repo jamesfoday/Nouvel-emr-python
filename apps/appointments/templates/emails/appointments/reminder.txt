@@ -1,0 +1,12 @@
+Subject: Reminder: your appointment
+
+Hello {{ patient_name }},
+
+This is a reminder for your appointment with {{ clinician_name }}.
+
+When: {{ start_local }} – {{ end_local }} ({{ tzname }})
+Where: {{ location|default:"—" }}
+Reason: {{ reason|default:"—" }}
+
+An .ics calendar file is attached so you can add this to your calendar.
+— Nouvel EMR

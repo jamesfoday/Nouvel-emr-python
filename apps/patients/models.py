@@ -1,6 +1,7 @@
 # apps/patients/models.py
 from django.db import models
 from django.utils import timezone
+from django.db.models import Q, F
 
 
 class Patient(models.Model):
@@ -46,8 +47,16 @@ class Patient(models.Model):
             models.Index(fields=["phone"]),
             models.Index(fields=["external_id"]),
             models.Index(fields=["family_name", "given_name", "date_of_birth"]),  # common dup key
+            models.Index(fields=["merged_into"])
         ]
         ordering = ["family_name", "given_name", "id"]
+
+        constraints = [
+        models.CheckConstraint(
+            name="patient_not_merged_into_self",
+            check=Q(merged_into__isnull=True) | ~Q(pk=F("merged_into")),
+        ),
+     ]
 
     def __str__(self) -> str:
         # prefer a compact card-like label for list screens.

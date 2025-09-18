@@ -1,0 +1,12 @@
+Subject: Your appointment is scheduled
+
+Hi {{ patient_name }},
+
+Your appointment has been scheduled.
+
+When: {{ start_local }} – {{ end_local }} ({{ tzname }})
+Clinician: {{ clinician_name }}
+Location: {{ location|default:"—" }}
+Reason: {{ reason|default:"—" }}
+
+We’ve attached an .ics file so you can add it to your calendar.

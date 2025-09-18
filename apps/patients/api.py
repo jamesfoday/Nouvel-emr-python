@@ -7,7 +7,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.filters import SearchFilter, OrderingFilter  # ← DRF filters
+from rest_framework.filters import SearchFilter, OrderingFilter
 
 from drf_spectacular.utils import (
     extend_schema,
@@ -37,21 +37,20 @@ from .schemas import (
     list=extend_schema(
         summary="Search & list patients (paginated)",
         description=(
-            "I support `q` search (name/email/phone/external_id), sorting via `sort`, "
-            "and limit/offset pagination."
+            "Supports `q` search (name/email/phone/external_id), `sort` ordering, "
+            "and limit/offset pagination (defaults set in DRF settings)."
         ),
         parameters=[
             OpenApiParameter(name="q", description="Search term", required=False, type=OpenApiTypes.STR),
             OpenApiParameter(
                 name="sort",
-                description="Order by field, prefix with '-' for desc (e.g., `family_name`, `-created_at`).",
+                description="Order by field. Use '-' for desc (e.g., `family_name`, `-created_at`).",
                 required=False,
                 type=OpenApiTypes.STR,
             ),
             OpenApiParameter(name="limit", description="Page size (default 25)", required=False, type=OpenApiTypes.INT),
             OpenApiParameter(name="offset", description="Offset for pagination", required=False, type=OpenApiTypes.INT),
         ],
-        # I omit explicit responses here so drf-spectacular infers paginated wrapper.
     ),
     retrieve=extend_schema(
         summary="Get patient",
@@ -87,9 +86,9 @@ class PatientViewSet(viewsets.ModelViewSet):
     serializer_class = PatientSerializer
     permission_classes = [IsAuthenticated, roles_required("clinician", "staff", "admin")]
 
-    # 🔎 DRF filters (search + ordering + pagination via global settings)
+    # DRF filters (search + ordering). Pagination is global via DRF settings.
     filter_backends = [SearchFilter, OrderingFilter]
-    # I bias name searches to prefix for speed (`^` = startswith); email/phone are contains.
+    # '^' means startswith for faster name lookups; contains for email/phone/external_id.
     search_fields = ["^family_name", "^given_name", "email", "phone", "external_id"]
     ordering_fields = [
         "family_name",
@@ -106,7 +105,6 @@ class PatientViewSet(viewsets.ModelViewSet):
     # ---- Helpers -------------------------------------------------------------
 
     def _is_confirmed(self, request) -> bool:
-        # I accept confirmation via body or header; clients can choose.
         body_flag = (request.data or {}).get("confirm_create")
         hdr_flag = (request.headers.get("X-Confirm-Create", "") or "").lower()
         truthy = {"true", "1", "yes", "y"}
@@ -119,7 +117,6 @@ class PatientViewSet(viewsets.ModelViewSet):
         return (str(body_flag).lower() in truthy) or (hdr_flag in truthy)
 
     def _dup_payload(self, candidates, payload) -> List[Dict[str, Any]]:
-        # I return the top 20 candidates with a simple score for the UI to display.
         results = []
         for c in candidates[:20]:
             results.append(
@@ -143,10 +140,9 @@ class PatientViewSet(viewsets.ModelViewSet):
         results.sort(key=lambda r: r["score"], reverse=True)
         return results
 
-    # ---- List/Search (now paginated) ----------------------------------------
+    # ---- List/Search (paginated) --------------------------------------------
 
     def list(self, request, *args, **kwargs):
-        # I let DRF filters handle search & ordering; I only log searches.
         q = request.query_params.get("q", "").strip()
         qs = self.filter_queryset(self.get_queryset())
         if q:
@@ -165,17 +161,15 @@ class PatientViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         obj = self.get_object()
         log_event(request, "patient.view", "Patient", obj.id)
-        return Response(PatientSerializer(obj).data)
+        return Response(self.get_serializer(obj).data)
 
     # ---- Create with inline duplicate warning -------------------------------
 
     def create(self, request, *args, **kwargs):
-        # I validate first so types/format are correct before duplicate logic.
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         vd = serializer.validated_data
 
-        # I run a duplicate preflight unless the client explicitly confirms creation.
         candidates = find_possible_duplicates(
             given_name=vd.get("given_name", ""),
             family_name=vd.get("family_name", ""),
@@ -197,10 +191,9 @@ class PatientViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        # Proceed to create when confirmed or no candidates.
         obj = serializer.save()
         log_event(request, "patient.create", "Patient", obj.id)
-        return Response(PatientSerializer(obj).data, status=status.HTTP_201_CREATED)
+        return Response(self.get_serializer(obj).data, status=status.HTTP_201_CREATED)
 
     # ---- Update (audit) ------------------------------------------------------
 
@@ -272,7 +265,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         summary="Merge proposal (preview only)",
         description=(
             "Preview a merge between the current (primary) patient and `other_id`. "
-            "Responds with a proposed field set and a list of conflicting fields. **No writes.**"
+            "Responds with a proposed field set and list of conflicting fields. **No writes.**"
         ),
         examples=[MergeProposalExample],
         responses={200: MergeProposalResponse},
@@ -296,10 +289,8 @@ class PatientViewSet(viewsets.ModelViewSet):
         for f in fields:
             a = getattr(primary, f)
             b = getattr(other, f)
-            # I prefer primary's non-empty value; otherwise take other's.
             chosen = a if (a not in (None, "",)) else b
             proposed[f] = chosen
-            # If both non-empty and different, I flag a conflict.
             if a not in (None, "",) and b not in (None, "",) and a != b:
                 conflicts.append({"field": f, "primary": a, "other": b})
 
@@ -352,12 +343,12 @@ class PatientViewSet(viewsets.ModelViewSet):
 
         other = get_object_or_404(Patient, pk=other_id)
 
-        # basic invariants
-        if not primary.is_active:
+        # Invariants (these fields must exist on your Patient model)
+        if not getattr(primary, "is_active", True):
             return Response({"detail": "Primary is not active; cannot receive merge."}, status=400)
-        if not other.is_active:
+        if not getattr(other, "is_active", True):
             return Response({"detail": "Other is already archived/merged."}, status=400)
-        if other.merged_into_id:
+        if getattr(other, "merged_into_id", None):
             return Response({"detail": "Other has been merged previously."}, status=400)
 
         merge_fields = [

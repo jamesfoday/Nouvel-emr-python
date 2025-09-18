@@ -2,7 +2,6 @@
 from django.conf import settings
 from django.db import models
 from django.db.models import Q, F
-from django.utils import timezone
 
 
 class Appointment(models.Model):
@@ -13,22 +12,32 @@ class Appointment(models.Model):
         ("cancelled", "Cancelled"),
     ]
 
-    # I bind the appointment to a patient and a clinician (user).
+    # Links
     patient = models.ForeignKey(
-        "patients.Patient", on_delete=models.CASCADE, related_name="appointments"
+        "patients.Patient",
+        on_delete=models.CASCADE,
+        related_name="appointments",
     )
     clinician = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="appointments"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="appointments",
     )
 
-    # I keep timezone-aware datetimes (Django handles this when USE_TZ=True).
+    # Time window (timezone-aware; Django handles this when USE_TZ=True)
     start = models.DateTimeField()
     end = models.DateTimeField()
 
+    # Details
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="scheduled")
     reason = models.CharField(max_length=255, blank=True, default="")
     location = models.CharField(max_length=255, blank=True, default="")
 
+    # Email reminder bookkeeping (optional)
+    reminder_24h_sent_at = models.DateTimeField(null=True, blank=True)
+    reminder_2h_sent_at = models.DateTimeField(null=True, blank=True)
+
+    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -41,8 +50,11 @@ class Appointment(models.Model):
             models.Index(fields=["patient", "start"]),
         ]
         constraints = [
-            # I never allow end <= start; this protects data at the DB level.
-            models.CheckConstraint(check=Q(end__gt=F("start")), name="appt_end_after_start"),
+            # Never allow end <= start (DB-level guard) — use condition= (Django 6+ safe)
+            models.CheckConstraint(
+                name="appt_end_after_start",
+                condition=Q(end__gt=F("start")),
+            ),
         ]
         ordering = ["-start", "id"]
 
@@ -53,23 +65,22 @@ class Appointment(models.Model):
         return self.status == "cancelled"
 
     def overlaps(self, other_start, other_end) -> bool:
-        # I treat intervals as [start, end); end == start is fine (no clash).
+        # Intervals are [start, end); end == start = no overlap
         return self.start < other_end and other_start < self.end
 
     @property
     def duration_minutes(self) -> int:
-        # I expose a quick duration helper for serializers/UI.
         delta = self.end - self.start
         return int(delta.total_seconds() // 60)
 
 
 class Availability(models.Model):
     """
-    I capture a clinician’s recurring weekly availability.
+    Recurring weekly availability for a clinician.
     Example: Monday 09:00–17:00 with 30-minute slots.
     """
 
-    # 0=Mon ... 6=Sun (Python’s weekday())
+    # 0=Mon ... 6=Sun (matches Python’s weekday())
     WEEKDAY_CHOICES = [
         (0, "Mon"),
         (1, "Tue"),
@@ -81,24 +92,36 @@ class Availability(models.Model):
     ]
 
     clinician = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="availability_windows"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="availability_windows",
     )
     weekday = models.IntegerField(choices=WEEKDAY_CHOICES)
     start_time = models.TimeField()
     end_time = models.TimeField()
 
-    # default slot size for suggestions; clients can override per request.
+    # Default slot size for suggestions; UI can override
     slot_minutes = models.PositiveIntegerField(default=30)
     is_active = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         indexes = [
             models.Index(fields=["clinician", "weekday"]),
         ]
         constraints = [
-            models.CheckConstraint(check=Q(end_time__gt=F("start_time")), name="avail_end_after_start"),
+            # End must be after start (DB-level guard) — use condition=
+            models.CheckConstraint(
+                name="avail_end_after_start",
+                condition=Q(end_time__gt=F("start_time")),
+            ),
+            # Avoid exact duplicate windows for the same clinician/day
+            models.UniqueConstraint(
+                name="uniq_availability_window",
+                fields=["clinician", "weekday", "start_time", "end_time"],
+            ),
         ]
         ordering = ["clinician", "weekday", "start_time"]
 

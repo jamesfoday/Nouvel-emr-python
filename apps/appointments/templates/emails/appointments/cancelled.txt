@@ -1,0 +1,10 @@
+Subject: Your appointment was cancelled
+
+Hi {{ patient_name }},
+
+Your appointment has been cancelled.
+
+Clinician: {{ clinician_name }}
+Original time: {{ start_local }} – {{ end_local }} ({{ tzname }})
+
+We’ve attached a cancellation .ics so your calendar stays in sync.

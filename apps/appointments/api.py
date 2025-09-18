@@ -12,6 +12,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.filters import OrderingFilter, SearchFilter
 
+from django.conf import settings
+from .tasks import send_appointment_email
+
 from drf_spectacular.utils import (
     extend_schema,
     extend_schema_view,
@@ -22,13 +25,15 @@ from drf_spectacular.types import OpenApiTypes
 from apps.rbac.permissions import roles_required
 from apps.audit.utils import log_event
 
-from .models import Appointment
+from .models import Appointment, Availability
 from .serializers import (
     AppointmentSerializer,
     AppointmentCreateSerializer,
     AppointmentRescheduleSerializer,
+    AvailabilitySerializer,
+    FreeSlotSerializer,
 )
-from .services import conflicting_appointments
+from .services import conflicting_appointments, suggest_free_slots
 from .schemas import (
     AppointmentConflicts409Serializer,
     CreateAppointmentExample,
@@ -40,21 +45,14 @@ from .ics import calendar_text_for_appointments
 @extend_schema_view(
     list=extend_schema(
         summary="List/search appointments (paginated)",
-        description=(
-            "Filters: date range (`date_from`, `date_to`), `patient_id`, `clinician_id`, `status`, and `q`."
-        ),
+        description="Filters: date range (`date_from`, `date_to`), `patient_id`, `clinician_id`, `status`, and `q`.",
         parameters=[
             OpenApiParameter(name="date_from", required=False, type=OpenApiTypes.DATETIME),
             OpenApiParameter(name="date_to", required=False, type=OpenApiTypes.DATETIME),
             OpenApiParameter(name="patient_id", required=False, type=OpenApiTypes.INT),
             OpenApiParameter(name="clinician_id", required=False, type=OpenApiTypes.INT),
             OpenApiParameter(name="status", required=False, type=OpenApiTypes.STR),
-            OpenApiParameter(
-                name="q",
-                description="Search in reason/location",
-                required=False,
-                type=OpenApiTypes.STR,
-            ),
+            OpenApiParameter(name="q", description="search in reason/location", required=False, type=OpenApiTypes.STR),
             OpenApiParameter(name="sort", required=False, type=OpenApiTypes.STR),
             OpenApiParameter(name="limit", required=False, type=OpenApiTypes.INT),
             OpenApiParameter(name="offset", required=False, type=OpenApiTypes.INT),
@@ -74,7 +72,7 @@ from .ics import calendar_text_for_appointments
 )
 class AppointmentViewSet(viewsets.ModelViewSet):
     """
-    I manage appointments with overlap checks and lifecycle actions.
+    I manage appointments with overlap checks, ICS, emails, and convenience actions.
     """
     schema_tags = ["Appointments"]
     queryset = Appointment.objects.select_related("patient", "clinician").all()
@@ -159,6 +157,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         obj = ser.save()
         log_event(request, "appt.create", "Appointment", obj.id)
+
+        # fire email (dev runs inline due to CELERY_TASK_ALWAYS_EAGER)
+        if getattr(settings, "NOTIFY_APPOINTMENTS", True) and obj.patient.email:
+            send_appointment_email.delay(obj.id, "created")
+
         return Response(AppointmentSerializer(obj).data, status=status.HTTP_201_CREATED)
 
     # ---- reschedule ----
@@ -212,6 +215,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             obj.reason = vd["reason"]
         obj.save(update_fields=["start", "end", "reason", "updated_at"])
         log_event(request, "appt.reschedule", "Appointment", obj.id)
+
+        if getattr(settings, "NOTIFY_APPOINTMENTS", True) and obj.patient.email:
+            send_appointment_email.delay(obj.id, "rescheduled")
+
         return Response(AppointmentSerializer(obj).data)
 
     # ---- cancel ----
@@ -227,6 +234,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         obj.status = "cancelled"
         obj.save(update_fields=["status", "updated_at"])
         log_event(request, "appt.cancel", "Appointment", obj.id)
+
+        if getattr(settings, "NOTIFY_APPOINTMENTS", True) and obj.patient.email:
+            send_appointment_email.delay(obj.id, "cancelled")
+
         return Response(AppointmentSerializer(obj).data)
 
     # ---- single appointment ICS ----
@@ -234,7 +245,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         methods=["GET"],
         summary="Download ICS for this appointment",
         description="I return a .ics file for the appointment (UTC).",
-        responses={(200, "text/calendar"): OpenApiTypes.BINARY},  # <-- older Spectacular-friendly
+        responses={(200, "text/calendar"): OpenApiTypes.BINARY},
     )
     @action(detail=True, methods=["get"], url_path="ics")
     def ics(self, request, pk=None):
@@ -250,17 +261,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         methods=["GET"],
         summary="ICS feed for a clinician (date range)",
         description=(
-            "I return a multi-event .ics for a clinician. "
-            "Filters: `date_from`, `date_to` (ISO 8601) and optional `status` "
-            "(`scheduled`, `confirmed`, `completed`, `cancelled`). "
-            "Defaults to the next 7 days if no range given."
+            "I return a multi-event .ics for a clinician. Filters: `date_from`, `date_to` (ISO 8601) and optional `status`."
         ),
         parameters=[
             OpenApiParameter(name="date_from", required=False, type=OpenApiTypes.DATETIME),
             OpenApiParameter(name="date_to", required=False, type=OpenApiTypes.DATETIME),
             OpenApiParameter(name="status", required=False, type=OpenApiTypes.STR),
         ],
-        responses={(200, "text/calendar"): OpenApiTypes.BINARY},  # <-- tuple form
+        responses={(200, "text/calendar"): OpenApiTypes.BINARY},
     )
     @action(detail=False, methods=["get"], url_path=r"clinician/(?P<clinician_id>[^/.]+)/ics")
     def clinician_ics(self, request, clinician_id=None):
@@ -289,3 +297,106 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         resp["Content-Disposition"] = f'attachment; filename="clinician-{clinician_id}.ics"'
         log_event(request, "appt.ics_feed", "Appointment", str(clinician_id))
         return resp
+
+    # ---- free slots suggestion ----
+    @extend_schema(
+        methods=["GET"],
+        summary="Suggest free slots",
+        description=(
+            "I suggest free slots for a clinician within a date range, based on weekly availability "
+            "and existing appointments. Optional `patient_id` avoids the patient’s own conflicts."
+        ),
+        parameters=[
+            OpenApiParameter(name="clinician_id", required=True, type=OpenApiTypes.INT),
+            OpenApiParameter(name="date_from", required=True, type=OpenApiTypes.DATETIME),
+            OpenApiParameter(name="date_to", required=True, type=OpenApiTypes.DATETIME),
+            OpenApiParameter(name="duration_minutes", required=True, type=OpenApiTypes.INT),
+            OpenApiParameter(name="step_minutes", required=False, type=OpenApiTypes.INT),
+            OpenApiParameter(name="patient_id", required=False, type=OpenApiTypes.INT),
+            OpenApiParameter(name="limit", required=False, type=OpenApiTypes.INT),
+        ],
+        responses={200: FreeSlotSerializer(many=True)},
+    )
+    @action(detail=False, methods=["get"], url_path="free-slots")
+    def free_slots(self, request):
+        def _parse_dt(name: str):
+            raw = request.query_params.get(name)
+            if not raw:
+                return None
+            dt = parse_datetime(raw)
+            if dt is None:
+                raise ValueError(f"{name} is not a valid ISO 8601 datetime")
+            if dt.tzinfo is None:
+                dt = timezone.make_aware(dt)
+            return dt
+
+        try:
+            clinician_id = int(request.query_params.get("clinician_id", "0"))
+            if not clinician_id:
+                return Response({"detail": "clinician_id is required."}, status=400)
+            df = _parse_dt("date_from")
+            dt = _parse_dt("date_to")
+            if not (df and dt):
+                return Response({"detail": "date_from and date_to are required ISO datetimes."}, status=400)
+            duration = int(request.query_params.get("duration_minutes", "0"))
+            if duration <= 0:
+                return Response({"detail": "duration_minutes must be > 0."}, status=400)
+            step = request.query_params.get("step_minutes")
+            step_minutes = int(step) if step else None
+            patient_id = request.query_params.get("patient_id")
+            limit = int(request.query_params.get("limit", "50"))
+
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=400)
+
+        slots = suggest_free_slots(
+            clinician_id=clinician_id,
+            date_from=df,
+            date_to=dt,
+            duration_minutes=duration,
+            step_minutes=step_minutes,
+            patient_id=int(patient_id) if patient_id else None,
+            limit=limit,
+        )
+        return Response(FreeSlotSerializer(slots, many=True).data)
+
+
+# ---- Availability CRUD -------------------------------------------------------
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List availability windows",
+        parameters=[
+            OpenApiParameter(name="clinician_id", required=False, type=OpenApiTypes.INT),
+            OpenApiParameter(name="weekday", required=False, type=OpenApiTypes.INT),
+        ],
+        responses={200: AvailabilitySerializer(many=True)},
+    ),
+    retrieve=extend_schema(summary="Get one availability", responses={200: AvailabilitySerializer}),
+    create=extend_schema(summary="Create availability", responses={201: AvailabilitySerializer}),
+    partial_update=extend_schema(summary="Update availability (partial)", responses={200: AvailabilitySerializer}),
+    update=extend_schema(summary="Update availability", responses={200: AvailabilitySerializer}),
+    destroy=extend_schema(summary="Delete availability"),
+)
+class AvailabilityViewSet(viewsets.ModelViewSet):
+    """
+    I manage the clinician’s weekly availability windows.
+    """
+    schema_tags = ["Appointments"]
+    queryset = Availability.objects.select_related("clinician").all()
+    serializer_class = AvailabilitySerializer
+    permission_classes = [IsAuthenticated, roles_required("clinician", "staff", "admin")]
+    filter_backends = [OrderingFilter]
+    ordering_fields = ["weekday", "start_time", "end_time", "created_at"]
+    ordering = ["clinician_id", "weekday", "start_time"]
+
+    def list(self, request, *args, **kwargs):
+        qs = self.filter_queryset(self.get_queryset())
+        cid = request.query_params.get("clinician_id")
+        wd = request.query_params.get("weekday")
+        if cid:
+            qs = qs.filter(clinician_id=cid)
+        if wd is not None:
+            qs = qs.filter(weekday=wd)
+        return Response(AvailabilitySerializer(qs, many=True).data)
