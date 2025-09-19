@@ -1,0 +1,60 @@
+<dialog open>
+  <article>
+    <header>
+      <a href="#" aria-label="Close" class="close" onclick="this.closest('dialog').remove(); return false;"></a>
+      <strong>Book appointment</strong>
+      <small>Patient: {{ patient.family_name }}, {{ patient.given_name }}</small>
+    </header>
+
+    <form id="book-form" class="grid">
+      {% csrf_token %}
+
+      <input type="hidden" name="patient_id" value="{{ patient.id }}" />
+
+      <label>
+        Clinician
+        <select name="clinician_id" hx-get="/console/appointments/slots"
+                hx-include="#book-form"
+                hx-target="#slot-panel"
+                hx-trigger="change">
+          <option value="">— Select —</option>
+          {% for c in clinicians %}
+            <option value="{{ c.id }}">{{ c.get_full_name|default:c.username }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label>
+        Date
+        <input type="date" name="date" value="{{ date_default }}"
+               hx-get="/console/appointments/slots"
+               hx-include="#book-form"
+               hx-target="#slot-panel"
+               hx-trigger="change" />
+      </label>
+
+      <label>
+        Duration (minutes)
+        <input type="number" name="duration" value="30" min="5" step="5"
+               hx-get="/console/appointments/slots"
+               hx-include="#book-form"
+               hx-target="#slot-panel"
+               hx-trigger="change delay:300ms" />
+      </label>
+
+      <label>
+        Reason (optional)
+        <input type="text" name="reason" placeholder="Follow-up, initial consult, …" />
+      </label>
+
+      <label>
+        Location (optional)
+        <input type="text" name="location" placeholder="Clinic A, Room 3" />
+      </label>
+    </form>
+
+    <div id="slot-panel" class="mt-4">
+      <p>Select clinician & date to load free slots…</p>
+    </div>
+  </article>
+</dialog>

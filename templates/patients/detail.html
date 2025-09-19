@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<a href="/console/patients/" style="color:#555; text-decoration:none;">← Back</a>
+<h2 style="margin:8px 0 6px 0;">{{ patient.family_name }}, {{ patient.given_name }}</h2>
+<p style="color:#555; margin:0 0 14px 0;">
+  DOB: {{ patient.date_of_birth|default:"—" }} ·
+  Email: {{ patient.email|default:"—" }} ·
+  Phone: {{ patient.phone|default:"—" }}
+</p>
+
+<h3 style="margin:16px 0 8px 0;">Appointments</h3>
+<table style="width:100%; border-collapse:collapse;">
+  <thead>
+    <tr>
+      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">When</th>
+      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">Clinician</th>
+      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">Status</th>
+      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">Reason</th>
+      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">ICS</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for a in appointments %}
+      <tr>
+        <td style="padding:8px 10px; border-bottom:1px solid #eee;">{{ a.start }} → {{ a.end }}</td>
+        <td style="padding:8px 10px; border-bottom:1px solid #eee;">{{ a.clinician.get_full_name|default:a.clinician.username }}</td>
+        <td style="padding:8px 10px; border-bottom:1px solid #eee;">
+          <span style="display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; background:#f0f3f7;">{{ a.status }}</span>
+        </td>
+        <td style="padding:8px 10px; border-bottom:1px solid #eee;">{{ a.reason|default:"—" }}</td>
+        <td style="padding:8px 10px; border-bottom:1px solid #eee;">
+          <a href="/api/v1/appointments/{{ a.id }}/ics/" style="text-decoration:none; color:#0a63c9;">.ics</a>
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" style="padding:8px 10px; color:#555;">No appointments yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

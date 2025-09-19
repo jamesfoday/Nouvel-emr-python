@@ -5,7 +5,6 @@ import environ
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- env bootstrap -----------------------------------------------------------
-# I centralize all secrets/knobs in .env for dev; prod will inject real env vars.
 env = environ.Env()
 ENV_FILE = BASE_DIR / ".env"
 if ENV_FILE.exists():
@@ -43,9 +42,7 @@ INSTALLED_APPS = [
 # --- middleware --------------------------------------------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    # I serve static files via Whitenoise; it keeps dev/prod simple.
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    # CORS early so headers are added before other middleware runs.
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -63,8 +60,7 @@ ASGI_APPLICATION = "config.asgi.application"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        # I keep a global templates dir for base layouts + includes.
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [BASE_DIR / "templates"],  # global templates (emails, etc.)
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -78,18 +74,14 @@ TEMPLATES = [
 ]
 
 # --- database ---------------------------------------------------------------
-# Dev defaults to SQLite; prod uses DATABASE_URL (e.g. postgres).
 DATABASES = {
-    "default": env.db(
-        "DATABASE_URL",
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-    )
+    "default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
 }
 
 # --- auth / i18n / tz --------------------------------------------------------
 AUTH_USER_MODEL = "accounts.User"
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = env.str("DJANGO_TIME_ZONE", default="Europe/Paris")  # I align to my working timezone.
+TIME_ZONE = env.str("DJANGO_TIME_ZONE", default="Europe/Paris")
 USE_I18N = True
 USE_TZ = True
 
@@ -97,11 +89,8 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
-
-# Django 5 storage API — compressed manifest for cache busting.
 STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
@@ -111,7 +100,7 @@ STORAGES = {
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",  # <— NEW
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
@@ -127,7 +116,6 @@ REST_FRAMEWORK = {
     "ORDERING_PARAM": "sort",
 }
 
-
 SPECTACULAR_SETTINGS = {
     "TITLE": "Nouvel API",
     "VERSION": "0.2.0",
@@ -137,17 +125,15 @@ SPECTACULAR_SETTINGS = {
         "displayRequestDuration": True,
         "tryItOutEnabled": True,
     },
-    "SECURITY": [{"bearerAuth": []}],  # <— Swagger, we use Bearer
+    "SECURITY": [{"bearerAuth": []}],
     "COMPONENT_SPLIT_REQUEST": True,
 }
 
-
-# --- CORS (open in dev; I’ll lock down in prod) ------------------------------
+# --- CORS --------------------------------------------------------------------
 CORS_ALLOW_ALL_ORIGINS = env.bool("CORS_ALLOW_ALL_ORIGINS", default=True)
-# If you prefer explicit origins (e.g., a React app), set the flag to False and list them:
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 
-# --- password validators -----------------------------------------------------
+# --- passwords ---------------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -158,23 +144,28 @@ AUTH_PASSWORD_VALIDATORS = [
 # --- email -------------------------------------------------------------------
 DEFAULT_FROM_EMAIL = env.str("DEFAULT_FROM_EMAIL", default="no-reply@nouvel.local")
 EMAIL_BACKEND = env.str("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
-# For real SMTP later, set these in .env (settings read them automatically if defined):
 EMAIL_HOST = env.str("EMAIL_HOST", default="")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_HOST_USER = env.str("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env.str("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 
-# --- celery (dev runs tasks inline; no broker needed) ------------------------
+# --- Celery ------------------------------------------------------------------
 CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default="redis://localhost:6379/0")
-CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=True)  # dev: run inline
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=True)
 CELERY_TASK_EAGER_PROPAGATES = True
 
-# --- feature flags -----------------------------------------------------------
-NOTIFY_APPOINTMENTS = env.bool("NOTIFY_APPOINTMENTS", default=True)
+# (mirror of beat schedule in celery.py so it’s visible in settings too)
+CELERY_BEAT_SCHEDULE = {
+    "send-due-reminders-every-5m": {
+        "task": "apps.appointments.tasks.send_due_reminders",
+        "schedule": 300.0,
+    },
+}
 
-# --- basic security switches for prod (env-driven) ---------------------------
+# --- flags & security --------------------------------------------------------
+NOTIFY_APPOINTMENTS = env.bool("NOTIFY_APPOINTMENTS", default=True)
 SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=False)
 CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=False)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https") if env.bool("USE_X_FORWARDED_PROTO", default=False) else None

@@ -1,0 +1,15 @@
+<article>
+  <header>
+    <strong>Appointment created</strong>
+  </header>
+  <p>
+    Appointment #{{ appointment.id }}:
+    {{ appointment.start }} → {{ appointment.end }}<br>
+    Clinician: {{ appointment.clinician.get_full_name|default:appointment.clinician.username }}<br>
+    Patient: {{ appointment.patient }}
+  </p>
+  <footer>
+    <a class="secondary" href="#" onclick="this.closest('dialog')?.remove(); return false;">Close</a>
+    <a class="contrast" href="/api/docs/">Open API Docs</a>
+  </footer>
+</article>

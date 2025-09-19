@@ -1,34 +1,56 @@
 <!doctype html>
-    {% load rbac_tags %}
+{% load static rbac_tags %}
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Nouvel</title>
+    <title>{% block title %}Nouvel Console{% endblock %}</title>
+
+    <!-- App styles (our lightweight design system) -->
+    <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+
+    <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@2.0.3"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+
+    <!-- CSRF token for HTMX/XHR -->
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <script>
+      document.addEventListener('htmx:configRequest', (e) => {
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (token) e.detail.headers['X-CSRFToken'] = token;
+      });
+    </script>
+
+    {% block head %}{% endblock %}
   </head>
   <body>
-    <nav class="container">
-      <ul><li><strong>Nouvel</strong></li></ul>
-      <ul>
-        <li><a href="/admin/">Admin</a></li>
-        <li><a href="/api/docs/">API</a></li>
-      </ul>
-    </nav>
+    <!-- Top navigation -->
+    <header class="nav card">
+      <div class="container" style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="display:flex;gap:10px;align-items:center;">
+          <a href="/console/" class="brand" style="font-weight:700;text-decoration:none;">Nouvel</a>
+          <span class="muted">Console</span>
+        </div>
+        <nav style="display:flex;gap:10px;align-items:center;">
+          <a href="/console/patients/">Patients</a>
+          <a href="/console/appointments/">Appointments</a>
+          {% if request.user|in_roles:"admin" %}<a href="/admin/">Admin</a>{% endif %}
+          <a href="/api/docs/">API</a>
+          <span id="busy-indicator" class="htmx-indicator"><span class="spinner"></span>&nbsp;Loading…</span>
+        </nav>
+      </div>
+    </header>
 
-<nav class="container">
-  <ul><li><strong>Nouvel</strong></li></ul>
-  <ul>
-    {% if request.user|in_roles:"admin" %}
-      <li><a href="/admin/">Admin</a></li>
-    {% endif %}
-    <li><a href="/api/docs/">API</a></li>
-  </ul>
-</nav>
-
+    <!-- Page content -->
     <main class="container">
       {% block content %}{% endblock %}
     </main>
+
+    <!-- Modal root (HTMX partials can target this) -->
+    <div id="modal" class="modal-root" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- App scripts -->
+    <script defer src="{% static 'js/console.js' %}"></script>
+    {% block scripts %}{% endblock %}
   </body>
 </html>

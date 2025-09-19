@@ -1,0 +1,61 @@
+<table class="table patients-table">
+  <thead>
+    <tr>
+      <th scope="col">Name</th>
+      <th scope="col">DOB</th>
+      <th scope="col">E-mail</th>
+      <th scope="col">Phone</th>
+      <th scope="col">External ID</th>
+      <th scope="col" class="col-action">Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in patients %}
+      <tr data-patient-id="{{ p.id }}">
+        <td class="name">
+          <strong>{{ p.family_name }}, {{ p.given_name }}</strong>
+          <div class="muted" style="font-size: 12px;">ID: {{ p.id }}</div>
+        </td>
+        <td>
+          {% if p.date_of_birth %}
+            <time datetime="{{ p.date_of_birth|date:'Y-m-d' }}">{{ p.date_of_birth|date:"Y-m-d" }}</time>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          {% if p.email %}
+            <a href="mailto:{% firstof p.email %}">{{ p.email }}</a>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          {% if p.phone %}
+            <a href="tel:{% firstof p.phone %}">{{ p.phone }}</a>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>{{ p.external_id|default:"—" }}</td>
+        <td class="col-action">
+          <button
+            class="btn btn-primary"
+            hx-get="/console/appointments/book?patient_id={{ p.id }}"
+            hx-target="#modal"
+            hx-swap="innerHTML"
+            hx-indicator="#busy-indicator"
+          >
+            Book
+          </button>
+        </td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="6">
+          <div class="empty-row">No patients yet. Try a different search.</div>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

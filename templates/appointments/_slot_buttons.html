@@ -1,0 +1,27 @@
+{% if slots %}
+  <div class="grid">
+    {% for s in slots %}
+      <form
+        hx-post="/console/appointments/create"
+        hx-target="#slot-panel"
+        hx-swap="innerHTML"
+        class="slot-form"
+      >
+        {% csrf_token %}
+        <input type="hidden" name="start" value="{{ s.start_iso }}">
+        <input type="hidden" name="end" value="{{ s.end_iso }}">
+
+        <!-- include the previously chosen data -->
+        <input type="hidden" name="patient_id" value="{{ request.GET.patient_id }}">
+        <input type="hidden" name="clinician_id" value="{{ request.GET.clinician_id }}">
+        <input type="hidden" name="reason" value="{{ request.GET.reason }}">
+        <input type="hidden" name="location" value="{{ request.GET.location }}">
+        <input type="hidden" name="status" value="{{ request.GET.status }}">
+
+        <button type="submit">{{ s.label }}</button>
+      </form>
+    {% endfor %}
+  </div>
+{% else %}
+  <p>No free slots on this day with the chosen duration.</p>
+{% endif %}

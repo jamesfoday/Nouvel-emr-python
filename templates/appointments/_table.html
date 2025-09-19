@@ -1,0 +1,50 @@
+<table style="width:100%; border-collapse:collapse;">
+  <thead>
+    <tr>
+      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">Start</th>
+      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">End</th>
+      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">Patient</th>
+      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">Clinician</th>
+      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">Status</th>
+      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">ICS</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for a in page.object_list %}
+    <tr>
+      <td style="padding:8px 10px; border-bottom:1px solid #eee;">{{ a.start }}</td>
+      <td style="padding:8px 10px; border-bottom:1px solid #eee;">{{ a.end }}</td>
+      <td style="padding:8px 10px; border-bottom:1px solid #eee;">{{ a.patient.family_name }}, {{ a.patient.given_name }}</td>
+      <td style="padding:8px 10px; border-bottom:1px solid #eee;">{{ a.clinician.get_full_name|default:a.clinician.username }}</td>
+      <td style="padding:8px 10px; border-bottom:1px solid #eee;">
+        <span style="display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; background:#f0f3f7;">{{ a.status }}</span>
+      </td>
+      <td style="padding:8px 10px; border-bottom:1px solid #eee;">
+        <a href="/api/v1/appointments/{{ a.id }}/ics/" style="text-decoration:none; color:#0a63c9;">.ics</a>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="6" style="padding:8px 10px; color:#555;">No appointments found.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+  {% if page.has_previous %}
+    <a
+      hx-get="?q={{ q }}&date_from={{ date_from }}&date_to={{ date_to }}&status={{ status }}&page={{ page.previous_page_number }}"
+      hx-target="#results"
+      hx-push-url="true"
+      style="padding:8px 12px; border:1px solid #ddd; border-radius:6px; background:#f7f7f7; text-decoration:none; color:#111;"
+    >Prev</a>
+  {% endif %}
+  <span style="color:#555;">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}
+    <a
+      hx-get="?q={{ q }}&date_from={{ date_from }}&date_to={{ date_to }}&status={{ status }}&page={{ page.next_page_number }}"
+      hx-target="#results"
+      hx-push-url="true"
+      style="padding:8px 12px; border:1px solid #ddd; border-radius:6px; background:#f7f7f7; text-decoration:none; color:#111;"
+    >Next</a>
+  {% endif %}
+</div>

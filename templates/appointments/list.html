@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin:0 0 12px 0;">Appointments</h2>
+
+<form
+  hx-get="/console/appointments/"
+  hx-target="#results"
+  hx-push-url="true"
+  style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;"
+>
+  <input name="q" value="{{ q }}" placeholder="Search reason/location/patient"
+         style="padding:8px; border:1px solid #ddd; border-radius:6px; width:280px;" />
+  <input type="datetime-local" name="date_from" value="{{ date_from }}"
+         style="padding:8px; border:1px solid #ddd; border-radius:6px;" />
+  <input type="datetime-local" name="date_to" value="{{ date_to }}"
+         style="padding:8px; border:1px solid #ddd; border-radius:6px;" />
+  <select name="status" style="padding:8px; border:1px solid #ddd; border-radius:6px;">
+    <option value="">All statuses</option>
+    {% for s in "scheduled,confirmed,completed,cancelled".split(",") %}
+      <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" style="padding:8px 12px; border:1px solid #ddd; border-radius:6px; background:#f7f7f7; cursor:pointer;">
+    Filter
+  </button>
+</form>
+
+<div id="results" style="margin-top:12px;">
+  {% include "appointments/_table.html" %}
+</div>
+{% endblock %}

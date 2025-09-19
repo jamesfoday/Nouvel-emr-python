@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin:0 0 12px 0;">Patients</h2>
+
+<div>
+  <input
+    name="q" id="q" value="{{ q }}" placeholder="Search name / email / phone"
+    hx-get="/console/patients/"
+    hx-trigger="keyup changed delay:300ms"
+    hx-target="#results"
+    hx-push-url="true"
+    style="padding:8px; border:1px solid #ddd; border-radius:6px; width:320px;"
+  />
+</div>
+
+<div id="results" style="margin-top:12px;">
+  {% include "patients/_table.html" %}
+</div>
+{% endblock %}
