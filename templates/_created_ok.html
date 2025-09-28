@@ -1,0 +1,8 @@
+<div class="alert success">
+  <strong>Booked!</strong>
+  <p>
+    Appointment #{{ appt.id }}: {{ appt.start|date:"D, d M H:i" }} → {{ appt.end|date:"H:i" }}.
+    <a href="/api/v1/appointments/{{ appt.id }}/ics/">Download ICS</a>
+  </p>
+  <button class="btn" onclick="document.getElementById('modal').innerHTML=''">Close</button>
+</div>

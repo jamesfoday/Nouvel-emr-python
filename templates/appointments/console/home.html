@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1 class="mb-3">Appointments Console</h1>
+
+  <p>Quick links</p>
+  <ul>
+    <li><a href="/console/">Console Home</a></li>
+    <li><a href="/console/patients/">Patients</a></li>
+  </ul>
+
+  <hr>
+
+  <form hx-get="/console/appointments/book" hx-target="#modal" hx-trigger="click">
+    <label>Patient ID:</label>
+    <input name="patient_id" type="number" required>
+    <button type="submit">Open Booking Modal</button>
+  </form>
+
+  <div id="modal"></div>
+{% endblock %}

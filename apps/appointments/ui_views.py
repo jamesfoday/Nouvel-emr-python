@@ -1,23 +1,42 @@
-from datetime import datetime, time, timedelta
+# apps/appointments/ui_views.py
+from __future__ import annotations
+
+from datetime import datetime, timedelta
 
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, get_object_or_404
+from django.http import HttpResponseBadRequest
+from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
-from django.http import HttpResponseBadRequest
+from django.template.loader import render_to_string
+from django.template import TemplateDoesNotExist
 
 from apps.accounts.models import User
 from apps.patients.models import Patient
-from .services import suggest_free_slots
+from apps.audit.utils import log_event
+
 from .serializers import AppointmentCreateSerializer
+from .services import suggest_free_slots, conflicting_appointments
+from .tasks import send_appointment_email
 
 
 def _clinician_qs():
-    # Show only users bound to role 'clinician'; fallback to staff if no bindings exist.
+    """
+    Prefer users bound to role 'clinician'; fall back to staff if none.
+    """
     qs = User.objects.filter(role_bindings__role__name="clinician").distinct()
     if not qs.exists():
         qs = User.objects.filter(is_staff=True)
     return qs.order_by("username")
+
+
+@login_required
+@require_GET
+def appointments_home(request):
+    """
+    Console landing page for appointments (HTMX-friendly).
+    """
+    return render(request, "appointments/console/home.html", {})
 
 
 @login_required
@@ -29,20 +48,18 @@ def book_dialog(request):
     patient_id = request.GET.get("patient_id")
     if not patient_id:
         return HttpResponseBadRequest("Missing patient_id")
-    patient = get_object_or_404(Patient, pk=patient_id)
 
+    patient = get_object_or_404(Patient, pk=patient_id)
     clinicians = _clinician_qs()
     today_str = timezone.localdate().isoformat()
 
-    return render(
-        request,
-        "appointments/_book_modal.html",
-        {
-            "patient": patient,
-            "clinicians": clinicians,
-            "date_default": today_str,
-        },
-    )
+    ctx = {
+        "patient": patient,
+        "clinicians": clinicians,
+        "date_default": today_str,
+        "durations": [15, 20, 30, 45, 60],
+    }
+    return render(request, "appointments/_book_modal.html", ctx)
 
 
 @login_required
@@ -50,41 +67,38 @@ def book_dialog(request):
 def slots_for_day(request):
     """
     Returns a button list of free slots for a clinician on a given date.
-    HTMX-fragment only.
+    HTMX fragment only.
+    Query params: clinician_id, date (YYYY-MM-DD), duration (minutes), patient_id (forwarded)
     """
     clinician_id = request.GET.get("clinician_id")
     date_str = request.GET.get("date")
-    dur = int(request.GET.get("duration", "30"))
+    duration = int(request.GET.get("duration", "30"))
+    patient_id = request.GET.get("patient_id")
 
     if not clinician_id or not date_str:
         return HttpResponseBadRequest("Missing clinician_id or date")
 
-    # Build a timezone-aware range [start_of_day, end_of_day)
-    # using the server's current timezone (settings.TIME_ZONE).
-    tz = timezone.get_current_timezone()
     try:
-        d = datetime.fromisoformat(date_str).date()
+        day = datetime.fromisoformat(date_str).date()
     except ValueError:
-        return HttpResponseBadRequest("Invalid date")
-
-    start_dt = timezone.make_aware(datetime.combine(d, time(0, 0)), tz)
-    end_dt = start_dt + timedelta(days=1)
+        return HttpResponseBadRequest("Invalid date (use YYYY-MM-DD)")
 
     slots = suggest_free_slots(
         clinician_id=int(clinician_id),
-        start=start_dt,
-        end=end_dt,
-        slot_minutes=dur,
-        min_gap_minutes=0,   # tweak if you want buffer between slots
-        limit=30,
+        day=day,
+        duration_minutes=duration,
+        max_results=30,
     )
 
-    # Represent slots as (start_iso, end_iso, label)
+    tz = timezone.get_current_timezone()
     rendered_slots = []
     for s in slots:
         st = s["start"]
         en = s["end"]
-        # Nicely formatted label in local time
+        if timezone.is_naive(st):
+            st = timezone.make_aware(st)
+        if timezone.is_naive(en):
+            en = timezone.make_aware(en)
         st_local = timezone.localtime(st, tz).strftime("%H:%M")
         en_local = timezone.localtime(en, tz).strftime("%H:%M")
         rendered_slots.append(
@@ -97,8 +111,14 @@ def slots_for_day(request):
 
     return render(
         request,
-        "appointments/_slot_buttons.html",
-        {"slots": rendered_slots},
+        "appointments/_free_slots.html",
+        {
+            "slots": rendered_slots,
+            "patient_id": patient_id,
+            "clinician_id": clinician_id,
+            "duration": duration,
+            "date": date_str,
+        },
     )
 
 
@@ -106,26 +126,52 @@ def slots_for_day(request):
 @require_POST
 def create_from_slot(request):
     """
-    Creates an appointment from a picked slot.
-    Returns a tiny success fragment for the modal.
+    Creates an appointment from a picked slot (HTMX POST).
+    Fields: patient_id, clinician_id, start, end, [reason], [location], [status]
     """
     patient_id = request.POST.get("patient_id")
     clinician_id = request.POST.get("clinician_id")
     start_iso = request.POST.get("start")
     end_iso = request.POST.get("end")
-    reason = request.POST.get("reason", "")
-    location = request.POST.get("location", "")
+    reason = (request.POST.get("reason") or "").strip()
+    location = (request.POST.get("location") or "").strip()
     status = request.POST.get("status")  # optional
 
     if not all([patient_id, clinician_id, start_iso, end_iso]):
         return HttpResponseBadRequest("Missing fields")
 
-    # Use DRF serializer for validation & saving.
+    try:
+        start = datetime.fromisoformat(start_iso)
+        end = datetime.fromisoformat(end_iso)
+    except ValueError:
+        return HttpResponseBadRequest("start/end must be ISO 8601")
+
+    if timezone.is_naive(start):
+        start = timezone.make_aware(start)
+    if timezone.is_naive(end):
+        end = timezone.make_aware(end)
+
+    conflicts = list(
+        conflicting_appointments(
+            clinician_id=int(clinician_id),
+            patient_id=int(patient_id),
+            start=start,
+            end=end,
+        )
+    )
+    if conflicts:
+        return render(
+            request,
+            "appointments/_conflict.html",
+            {"conflicts": conflicts[:10]},
+            status=409,
+        )
+
     payload = {
         "patient": patient_id,
         "clinician": clinician_id,
-        "start": start_iso,
-        "end": end_iso,
+        "start": start.isoformat(),
+        "end": end.isoformat(),
         "reason": reason,
         "location": location,
     }
@@ -136,11 +182,11 @@ def create_from_slot(request):
     ser.is_valid(raise_exception=True)
     appt = ser.save()
 
-    # (Your API layer already logs & sends email/ICS.)
-    return render(
-        request,
-        "appointments/_created.html",
-        {"appointment": appt},
-    )
+    # Audit + email/ICS
+    log_event(request, "appt.create.ui", "Appointment", appt.id)
+    try:
+        send_appointment_email.delay(appt.id, "created")
+    except Exception:
+        pass
 
-
+    return render(request, "appointments/_created_ok.html", {"appt": appt})
