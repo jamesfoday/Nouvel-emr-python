@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto mt-6">
+  <div class="rounded-2xl bg-[#EAF5ED] p-1">
+    <div class="rounded-2xl bg-white p-6 shadow">
+      <div class="flex items-center justify-between">
+        <h1 class="text-xl font-semibold">Record Lab Result</h1>
+        <a href="{% url 'labs_ui:order_create' clinician.pk %}" class="text-sm text-emerald-700 hover:underline">Order a test instead</a>
+      </div>
+
+      <form method="post" enctype="multipart/form-data" class="mt-4">
+        {% csrf_token %}
+
+        <!-- Patient picker -->
+        <label class="block font-medium mb-1">Patient</label>
+        <div class="relative mb-3">
+          <input
+            type="text"
+            name="patient_query"
+            placeholder="Search patient"
+            class="w-full rounded-full border px-4 py-2 pr-10"
+            hx-get="{% url 'patients_ui:pick_list' %}"
+            hx-target="#patient-results"
+            hx-trigger="input changed delay:300ms"
+            autocomplete="off"
+          >
+          <input type="hidden" name="patient_id" id="patient_id">
+          <svg class="pointer-events-none absolute right-3 top-2.5 h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none">
+            <path d="M21 21l-4.3-4.3m1.3-5.2a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </div>
+        <div id="patient-results" class="mb-4"></div>
+
+        <div class="grid sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block font-medium mb-1">Status</label>
+            <select name="status" class="w-full rounded-md border px-3 py-2">
+              <option value="final">Final</option>
+              <option value="partial">Partial</option>
+              <option value="corrected">Corrected</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block font-medium mb-1">Performing lab (optional)</label>
+            <input type="text" name="performing_lab" class="w-full rounded-md border px-3 py-2">
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <label class="block font-medium mb-1">Attach report PDF (optional)</label>
+          <input type="file" name="pdf" accept="application/pdf" class="w-full rounded-md border px-3 py-2">
+        </div>
+
+        <!-- Observation grid -->
+        <div class="mt-6">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="font-semibold">Observations</h2>
+            <button type="button" class="rounded-md border px-3 py-1 text-sm" onclick="addObsRow()">Add row</button>
+          </div>
+
+          <div id="obs-rows" class="space-y-2">
+            <!-- start with one row -->
+            <div class="grid grid-cols-12 gap-2">
+              <input class="col-span-3 rounded-md border px-2 py-1" name="obs_name[]"  placeholder="Name (e.g., Hemoglobin)">
+              <input class="col-span-2 rounded-md border px-2 py-1" name="obs_code[]"  placeholder="LOINC (opt)">
+              <input class="col-span-2 rounded-md border px-2 py-1" name="obs_value[]" placeholder="Value">
+              <input class="col-span-1 rounded-md border px-2 py-1" name="obs_unit[]"  placeholder="Unit">
+              <input class="col-span-1 rounded-md border px-2 py-1" name="obs_low[]"   placeholder="Low">
+              <input class="col-span-1 rounded-md border px-2 py-1" name="obs_high[]"  placeholder="High">
+              <input class="col-span-1 rounded-md border px-2 py-1" name="obs_flag[]"  placeholder="Flag">
+              <input class="col-span-12 sm:col-span-12 rounded-md border px-2 py-1" name="obs_note[]"  placeholder="Note (optional)">
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex items-center justify-end gap-3">
+          <a href="{% url 'clinicians_ui:tests_index' clinician.pk %}" class="rounded-md border px-4 py-2">Cancel</a>
+          <button class="rounded-md bg-emerald-600 px-4 py-2 text-white">Save Result</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Called by the pick list
+  function selectPatient(id, label){
+    document.getElementById('patient_id').value = id;
+    const input = document.querySelector('input[name="patient_query"]');
+    if (input) input.value = label;
+  }
+
+  // Event delegation for the HTMX-rendered pick list
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('button.pick-patient');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const label = btn.dataset.label || '';
+    if (window.selectPatient) window.selectPatient(id, label);
+    const box = document.getElementById('patient-results');
+    if (box) box.innerHTML = '';
+  });
+
+  function addObsRow(){
+    const c = document.getElementById('obs-rows');
+    const row = document.createElement('div');
+    row.className = "grid grid-cols-12 gap-2";
+    row.innerHTML = `
+      <input class="col-span-3 rounded-md border px-2 py-1" name="obs_name[]"  placeholder="Name">
+      <input class="col-span-2 rounded-md border px-2 py-1" name="obs_code[]"  placeholder="LOINC">
+      <input class="col-span-2 rounded-md border px-2 py-1" name="obs_value[]" placeholder="Value">
+      <input class="col-span-1 rounded-md border px-2 py-1" name="obs_unit[]"  placeholder="Unit">
+      <input class="col-span-1 rounded-md border px-2 py-1" name="obs_low[]"   placeholder="Low">
+      <input class="col-span-1 rounded-md border px-2 py-1" name="obs_high[]"  placeholder="High">
+      <input class="col-span-1 rounded-md border px-2 py-1" name="obs_flag[]"  placeholder="Flag">
+      <input class="col-span-12 sm:col-span-12 rounded-md border px-2 py-1" name="obs_note[]"  placeholder="Note">
+    `;
+    c.appendChild(row);
+  }
+</script>
+{% endblock %}

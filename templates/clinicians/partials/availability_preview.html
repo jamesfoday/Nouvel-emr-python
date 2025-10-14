@@ -1,0 +1,9 @@
+<ul class="space-y-2">
+  {% for s in slots %}
+    <li class="rounded-xl border border-black/5 bg-white px-3 py-2 text-sm text-gray-700">
+      {{ s.start|date:"D, M j" }} · {{ s.start|time:"H:i" }}
+    </li>
+  {% empty %}
+    <li class="text-sm text-gray-500">No free slots found.</li>
+  {% endfor %}
+</ul>

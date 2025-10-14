@@ -1,0 +1,91 @@
+{% load static %}
+
+<section class="rounded-2xl bg-white ring-1 ring-black/5">
+  <!-- FIXED CARD HEIGHT -->
+  <div id="p-msgs-card"
+       class="dm-card h-[16rem] sm:h-[24rem] md:h-[26rem] lg:h-[20rem] flex flex-col">
+
+    <header class="flex items-center justify-between border-b px-4 sm:px-6 py-3">
+      <h3 class="text-base sm:text-lg font-semibold text-gray-900">Direct Message</h3>
+    </header>
+
+    <!-- SCROLLING AREA -->
+    <div class="flex-1 min-h-0 overflow-y-auto">
+      <div class="p-4 sm:p-6">
+        <div class="text-sm font-semibold mb-2">Clinicians</div>
+
+        {% if clinicians %}
+          <ul class="divide-y divide-gray-100 rounded-xl border">
+            {% for c in clinicians %}
+              {% firstof c.get_full_name c.username as name %}
+              {% with initial=name|slice:":1" %}
+              <li>
+                <button
+                  type="button"
+                  class="clinician-item w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50 focus:outline-none"
+                  hx-get="{% url 'portal_ui:messages_thread' %}?clinician_id={{ c.pk }}"
+                  hx-target="#p-msgs-card"
+                  hx-swap="outerHTML"
+                  data-cid="{{ c.pk }}"
+                  data-last-login="{{ c.last_login|date:'U'|default:'' }}"
+                >
+                  <span class="flex items-center gap-3 min-w-0">
+                    <span class="relative">
+                      <span class="h-9 w-9 rounded-full overflow-hidden bg-gray-200 grid place-items-center text-sm font-semibold text-gray-700">
+                        {% if c.avatar %}
+                          <img src="{{ c.avatar.url }}" alt="" class="h-full w-full object-cover">
+                        {% elif c.profile and c.profile.avatar %}
+                          <img src="{{ c.profile.avatar.url }}" alt="" class="h-full w-full object-cover">
+                        {% else %}
+                          <span>{{ initial|upper }}</span>
+                        {% endif %}
+                      </span>
+                      <span class="status-dot absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white bg-gray-300"></span>
+                    </span>
+
+                    <span class="min-w-0">
+                      <span class="block font-medium truncate">Dr {{ name }}</span>
+                      {% if c.specialty %}
+                        <span class="block text-xs text-gray-500 truncate">{{ c.specialty }}</span>
+                      {% endif %}
+                    </span>
+                  </span>
+
+                  <span class="shrink-0 flex items-center gap-2">
+                    {% if c.unread_count and c.unread_count > 0 %}
+                      <span id="badge-c-{{ c.id }}"
+                            class="inline-flex items-center justify-center min-w-[1.1rem] h-5 rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white">
+                        {{ c.unread_count }}
+                      </span>
+                    {% endif %}
+                    <svg class="h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                </button>
+              </li>
+              {% endwith %}
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="text-gray-400 text-sm">No clinicians available.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function markAvailability () {
+  const nowSec = Math.floor(Date.now() / 1000);
+  document.querySelectorAll('.clinician-item').forEach(btn => {
+    const ts  = parseInt(btn.dataset.lastLogin || '0', 10);
+    const dot = btn.querySelector('.status-dot');
+    if (!dot || !ts) return;
+    const diff = nowSec - ts;
+    if (diff <= 600)        dot.style.backgroundColor = '#10B981';   // online
+    else if (diff <= 86400) dot.style.backgroundColor = '#F59E0B';   // idle
+    else                    dot.style.backgroundColor = '#9CA3AF';   // offline
+  });
+})();
+</script>

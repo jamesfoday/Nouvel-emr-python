@@ -1,0 +1,11 @@
+{% if p_user %}
+  <div class="space-y-3">
+    {% for m in msgs %}
+      {% include "clinicians/partials/_dm_msg.html" with m=m %}
+    {% empty %}
+      <p class="text-gray-400">No messages yet. Say hello 👋</p>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="text-gray-400">Patient has no portal user/email; cannot message.</p>
+{% endif %}

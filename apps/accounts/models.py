@@ -1,28 +1,43 @@
-from django.contrib.auth.models import AbstractUser
-from django.db import models
-from django.conf import settings
-from django.utils import timezone
+# apps/accounts/models.py
+from __future__ import annotations
+
 from datetime import timedelta
 import secrets
 
+from django.conf import settings
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+from django.utils import timezone
+
 
 class User(AbstractUser):
-    # Lightweight display name; extend with 2FA/org binding later.
+    """
+    Project user model.
+    - display_name: lightweight label you can show in UI
+    - avatar: stored under MEDIA_ROOT/avatars/
+    """
     display_name = models.CharField(max_length=150, blank=True, default="")
+    avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
 
     def __str__(self) -> str:  # type: ignore[override]
-        return self.display_name or self.username
+        return self.display_name or self.get_full_name() or self.username
 
 
 class Invite(models.Model):
-    # invite token instead of opening registration.
+    """
+    Simple invite flow: send token by email; expire after 7 days by default.
+    """
     email = models.EmailField()
     role = models.ForeignKey("rbac.Role", on_delete=models.PROTECT)
     token = models.CharField(max_length=64, unique=True, editable=False)
     expires_at = models.DateTimeField()
     accepted_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="invites_sent"
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="invites_sent",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

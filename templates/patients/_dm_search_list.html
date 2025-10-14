@@ -1,0 +1,32 @@
+{# templates/patients/_dm_search_list.html #}
+<ul class="space-y-2">
+  {% for p in patients %}
+    {% with label=p.family_name|add:", "|add:p.given_name %}
+    <li>
+      <button
+        type="button"
+        class="w-full text-left flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-3 py-2 hover:bg-gray-50"
+        data-dm-patient
+        data-id="{{ p.id }}"
+        data-label="{{ label|escape }}"
+        {% if p.unread_count %}data-unread="{{ p.unread_count }}"{% endif %}
+      >
+        <span class="flex items-center gap-3 min-w-0">
+          <span class="grid h-7 w-7 place-items-center rounded-full bg-emerald-500 text-white text-sm">👤</span>
+          <span class="font-medium text-gray-900 truncate">{{ label }}</span>
+        </span>
+
+        {# NEW: unread badge (only if > 0) #}
+        {% if p.unread_count and p.unread_count > 0 %}
+          <span class="inline-flex h-5 min-w-[1.1rem] items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white"
+                aria-label="{{ p.unread_count }} unread">
+            {{ p.unread_count }}
+          </span>
+        {% endif %}
+      </button>
+    </li>
+    {% endwith %}
+  {% empty %}
+    <li class="text-xs text-gray-400 px-2">No matches.</li>
+  {% endfor %}
+</ul>

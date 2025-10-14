@@ -2,25 +2,25 @@
 FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    POETRY_VIRTUALENVS_CREATE=false
 
 WORKDIR /app
 
+# System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential curl && \
-    rm -rf /var/lib/apt/lists/*
+    build-essential libpq-dev curl \
+ && rm -rf /var/lib/apt/lists/*
 
+# Python deps
 COPY pyproject.toml poetry.lock* requirements.txt* /app/
-# If you use Poetry, install it; otherwise fallback to pip + requirements.txt
-RUN if [ -f "pyproject.toml" ]; then \
-      pip install --no-cache-dir poetry && poetry config virtualenvs.create false && poetry install --no-interaction --no-ansi; \
-    elif [ -f "requirements.txt" ]; then \
-      pip install --no-cache-dir -r requirements.txt; \
-    fi
+# Use either Poetry or pip; pick one. Here using pip requirements if present.
+RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
 
+# App code
 COPY . /app
 
-# collectstatic is a no-op for API, but handy if you add admin assets
-RUN python manage.py collectstatic --noinput || true
+# Collect static at build if you prefer (compose already runs it too)
+# RUN python manage.py collectstatic --noinput
 
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+EXPOSE 8000

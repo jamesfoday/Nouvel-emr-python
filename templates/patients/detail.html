@@ -1,40 +1,147 @@
 {% extends "base.html" %}
 {% block content %}
-<a href="/console/patients/" style="color:#555; text-decoration:none;">← Back</a>
-<h2 style="margin:8px 0 6px 0;">{{ patient.family_name }}, {{ patient.given_name }}</h2>
-<p style="color:#555; margin:0 0 14px 0;">
-  DOB: {{ patient.date_of_birth|default:"—" }} ·
-  Email: {{ patient.email|default:"—" }} ·
-  Phone: {{ patient.phone|default:"—" }}
-</p>
+<div class="mx-auto mt-6 w-full max-w-6xl px-3 sm:px-6">
+  <div class="rounded-2xl bg-[#EAF5ED] p-1">
+    <div class="rounded-2xl bg-white p-4 sm:p-6 shadow">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 class="text-xl font-semibold text-gray-800">
+            {{ p.family_name }}, {{ p.given_name }}
+          </h1>
+          <p class="text-sm text-gray-500">Patient ID: {{ p.id }}</p>
+          {% if p.user %}
+            <p class="text-sm text-gray-600">Username: <span class="font-medium">{{ p.user.username }}</span></p>
+          {% endif %}
+        </div>
 
-<h3 style="margin:16px 0 8px 0;">Appointments</h3>
-<table style="width:100%; border-collapse:collapse;">
-  <thead>
-    <tr>
-      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">When</th>
-      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">Clinician</th>
-      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">Status</th>
-      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">Reason</th>
-      <th style="padding:8px 10px; border-bottom:1px solid #eee; background:#fafafa; text-align:left;">ICS</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for a in appointments %}
-      <tr>
-        <td style="padding:8px 10px; border-bottom:1px solid #eee;">{{ a.start }} → {{ a.end }}</td>
-        <td style="padding:8px 10px; border-bottom:1px solid #eee;">{{ a.clinician.get_full_name|default:a.clinician.username }}</td>
-        <td style="padding:8px 10px; border-bottom:1px solid #eee;">
-          <span style="display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; background:#f0f3f7;">{{ a.status }}</span>
-        </td>
-        <td style="padding:8px 10px; border-bottom:1px solid #eee;">{{ a.reason|default:"—" }}</td>
-        <td style="padding:8px 10px; border-bottom:1px solid #eee;">
-          <a href="/api/v1/appointments/{{ a.id }}/ics/" style="text-decoration:none; color:#0a63c9;">.ics</a>
-        </td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="5" style="padding:8px 10px; color:#555;">No appointments yet.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+        <div class="flex flex-wrap items-center gap-2">
+          <a href="{% url 'patients_ui:patients_home' %}"
+             class="rounded-xl border border-gray-300 px-3 py-1.5 text-sm text-gray-800">Back to list</a>
+
+          <a href="{% url 'patients_ui:patients_edit' pk=p.id %}"
+             class="rounded-xl bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white">Edit</a>
+
+          <form method="post" action="{% url 'patients_ui:patients_deactivate' pk=p.id %}"
+                onsubmit="return confirm('Deactivate this patient?');" class="inline">
+            {% csrf_token %}
+            <button type="submit"
+                    class="rounded-xl bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white">
+              Deactivate
+            </button>
+          </form>
+
+          {# Was: if request.user.is_staff or request.user.is_superuser and p.email #}
+          {% if request.user.is_staff or request.user.is_superuser %}
+            {% if p.email %}
+              <button type="button"
+                      class="login-link-btn rounded-xl border border-emerald-600 text-emerald-700 px-3 py-1.5 text-sm"
+                      data-url="{% url 'patients_ui:patients_login_link' pk=p.id %}">
+                Login link
+              </button>
+              <div class="login-link-popover hidden mt-2 flex items-center gap-2 sm:mt-0">
+                <input type="text"
+                       class="w-56 sm:w-80 rounded-md border px-2 py-1 text-[11px] text-gray-700"
+                       readonly value="">
+                <button type="button"
+                        class="copy-link-btn rounded-md bg-emerald-600 px-2 py-1 text-white">
+                  Copy
+                </button>
+              </div>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="mt-6 grid gap-4 md:grid-cols-2">
+        <div class="rounded-xl border p-4">
+          <h2 class="mb-3 font-semibold text-gray-800">Demographics</h2>
+          <dl class="grid grid-cols-3 gap-y-2 text-sm">
+            <dt class="text-gray-500">Given</dt><dd class="col-span-2">{{ p.given_name|default:"—" }}</dd>
+            <dt class="text-gray-500">Family</dt><dd class="col-span-2">{{ p.family_name|default:"—" }}</dd>
+            <dt class="text-gray-500">DOB</dt>
+            <dd class="col-span-2">{% if p.date_of_birth %}{{ p.date_of_birth|date:"Y-m-d" }}{% else %}—{% endif %}</dd>
+            <dt class="text-gray-500">Sex</dt><dd class="col-span-2">{{ p.sex|default:"—" }}</dd>
+            <dt class="text-gray-500">Email</dt><dd class="col-span-2">{{ p.email|default:"—" }}</dd>
+            <dt class="text-gray-500">Phone</dt><dd class="col-span-2">{{ p.phone|default:"—" }}</dd>
+          </dl>
+        </div>
+
+        <div class="rounded-xl border p-4">
+       <h2 class="mb-3 font-semibold text-gray-800">Address</h2>
+       <div class="text-sm text-gray-700">
+       <div>{{ p.address_line|default:"—" }}</div>
+        <div>
+      {{ p.city|default:"" }}
+      {% if p.city and p.region or p.city and p.postal_code %}, {% endif %}
+      {{ p.region|default:"" }} {{ p.postal_code|default:"" }}
+    </div>
+    <div>{{ p.country|default:"" }}</div>
+  </div>
+</div>
+
+      </div>
+
+      {# ... other panels (appointments, encounters, docs) can go here ... #}
+    </div>
+  </div>
+</div>
+
+{% if request.user.is_staff or request.user.is_superuser %}
+<script>
+  async function fetchLoginLink(url, container) {
+    const btn    = container.querySelector(".login-link-btn");
+    const pop    = container.querySelector(".login-link-popover");
+    const input  = pop?.querySelector("input");
+    const copyBt = pop?.querySelector(".copy-link-btn");
+
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Generating…";
+
+    try {
+      const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+      if (!resp.ok) throw new Error(await resp.text() || `HTTP ${resp.status}`);
+      const data = await resp.json();
+
+      if (input) {
+        input.value = data.link || "";
+        pop.classList.remove("hidden");
+      }
+      if (navigator.clipboard && data.link) {
+        try { await navigator.clipboard.writeText(data.link); } catch (_) {}
+      }
+
+      btn.textContent = "Link ready";
+      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1600);
+
+      copyBt?.addEventListener("click", async () => {
+        if (!input?.value) return;
+        try {
+          await navigator.clipboard.writeText(input.value);
+          copyBt.textContent = "Copied";
+          setTimeout(() => (copyBt.textContent = "Copy"), 1200);
+        } catch (_) {
+          input.select();
+          document.execCommand("copy");
+        }
+      }, { once: true });
+
+    } catch (e) {
+      console.error(e);
+      alert("Could not generate login link. Ensure the patient has an email.");
+      btn.textContent = original;
+      btn.disabled = false;
+    }
+  }
+
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".login-link-btn");
+    if (!btn) return;
+    e.preventDefault();
+    const container = btn.closest(".flex") || document;
+    const url = btn.dataset.url;
+    if (url) fetchLoginLink(url, container);
+  });
+</script>
+{% endif %}
 {% endblock %}

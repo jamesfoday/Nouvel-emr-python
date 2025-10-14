@@ -17,3 +17,6 @@ isort>=5.13
 mypy>=1.11
 coverage>=7.6
 djangorestframework-simplejwt>=5.3
+dj-database-url
+python-json-logger
+sentry-sdk

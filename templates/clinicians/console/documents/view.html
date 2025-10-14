@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mx-auto mt-6 w-full max-w-4xl px-3 sm:px-6">
+  <div class="rounded-2xl bg-[#EAF5ED] p-1">
+    <div class="rounded-2xl bg-white p-4 sm:p-6 shadow">
+      <h1 class="text-xl font-semibold mb-2">{{ doc.title }}</h1>
+      <div class="text-sm text-gray-500 mb-6">{{ doc.patient.full_name }} · {{ doc.created_at|date:"d M Y, H:i" }}</div>
+      {% if doc.file %}
+        {% if doc.file.url|lower|slice:"-4:" == ".pdf" %}
+          <iframe src="{{ doc.file.url }}" class="w-full h-[70vh] rounded-md border"></iframe>
+        {% else %}
+          <img src="{{ doc.file.url }}" alt="{{ doc.title }}" class="max-w-full rounded-md border">
+        {% endif %}
+      {% else %}
+        <div class="text-gray-500">No file attached.</div>
+      {% endif %}
+      <div class="mt-6">
+        <a href="{% url 'documents_ui:list' clinician.pk %}" class="text-blue-600 underline">Back to documents</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

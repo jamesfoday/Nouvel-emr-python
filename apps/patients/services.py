@@ -1,18 +1,23 @@
+from __future__ import annotations
+
 from datetime import date
-from typing import Optional
+from dataclasses import dataclass
+from typing import Optional, Dict, List, Tuple
+
+from django.apps import apps
+from django.db import transaction
 from django.db.models import Q, QuerySet
+
 from .models import Patient
 
 
-# ---- Normalizers (I keep it simple for now; can swap to phonenumbers later) ----
+# ---- Normalizers (kept) ----
 
 def normalize_email(value: str) -> str:
-    # lowercase and strip whitespace to catch obvious duplicates.
     return (value or "").strip().lower()
 
 
 def normalize_phone(value: str) -> str:
-    # I remove spaces and common separators; real-world: use 'phonenumbers' lib.
     raw = (value or "").strip()
     for ch in (" ", "-", "(", ")", "."):
         raw = raw.replace(ch, "")
@@ -20,7 +25,6 @@ def normalize_phone(value: str) -> str:
 
 
 def parse_iso_date(value) -> Optional[date]:
-    # I accept either a date instance or 'YYYY-MM-DD' string.
     if isinstance(value, date):
         return value
     try:
@@ -29,7 +33,7 @@ def parse_iso_date(value) -> Optional[date]:
         return None
 
 
-# ---- Duplicate search & scoring ----
+# ---- Duplicate search & scoring (kept) ----
 
 def find_possible_duplicates(
     given_name: str = "",
@@ -39,9 +43,10 @@ def find_possible_duplicates(
     phone: str = "",
 ) -> QuerySet[Patient]:
     """
-    I search candidates by:
+    Search candidates by:
       - exact email OR exact phone (normalized), OR
       - exact (family + given + DOB).
+    Only active (not merged) patients are returned.
     """
     email_n = normalize_email(email)
     phone_n = normalize_phone(phone)
@@ -58,12 +63,12 @@ def find_possible_duplicates(
             & Q(given_name__iexact=given_name.strip())
             & Q(date_of_birth=dob)
         )
-    return Patient.objects.filter(q, is_active=True).distinct()
+    return Patient.objects.filter(q, is_active=True, merged_into__isnull=True).distinct()
 
 
 def score_duplicate(candidate: Patient, *, email: str, phone: str, given_name: str, family_name: str, dob):
     """
-    I produce a basic score:
+    Basic score:
       +100 exact email, +100 exact phone, +70 exact (name + DOB).
     """
     score = 0
@@ -78,3 +83,71 @@ def score_duplicate(candidate: Patient, *, email: str, phone: str, given_name: s
     ):
         score += 70
     return score
+
+
+# ---- Merge service ----
+
+@dataclass
+class MergeResult:
+    moved: Dict[str, int]
+    notes: List[str]
+
+
+# List of (app_label.ModelName, patient_field)
+TARGETS: List[Tuple[str, str]] = [
+    ("appointments.Appointment", "patient"),
+    ("encounters.Encounter", "patient"),
+    ("prescriptions.Prescription", "patient"),
+    ("documents.Document", "patient"),
+    
+]
+
+
+def _get_model(label: str):
+    """Try apps.<label> first (project style), then plain app_label.Model."""
+    try:
+        return apps.get_model(f"apps.{label}")
+    except Exception:
+        try:
+            return apps.get_model(label)
+        except Exception:
+            return None
+
+
+@transaction.atomic
+def merge_into(primary: Patient, other: Patient) -> MergeResult:
+    """
+    Reassign all patient-bound relations from 'other' to 'primary',
+    then archive 'other' via Patient.mark_merged_into(primary).
+    """
+    if primary.pk == other.pk:
+        raise ValueError("Cannot merge a patient into itself.")
+    if other.merged_into_id:
+        raise ValueError("The 'other' patient is already merged.")
+
+    # Lock both rows to avoid race conditions (order by pk).
+    ids = sorted([primary.pk, other.pk])
+    Patient.objects.select_for_update().filter(pk__in=ids)
+
+    moved: Dict[str, int] = {}
+    notes: List[str] = []
+
+    for label, field in TARGETS:
+        Model = _get_model(label)
+        if not Model:
+            notes.append(f"Skip {label}: model not found")
+            continue
+        if not any(f.name == field for f in Model._meta.fields):
+            notes.append(f"Skip {label}: field '{field}' missing")
+            continue
+
+        qs = Model.objects.filter(**{f"{field}_id": other.pk})
+        count = qs.count()
+        if count:
+            qs.update(**{field: primary})
+        moved[label] = count
+
+    # Archive & point the other record
+    other.mark_merged_into(primary)
+
+    return MergeResult(moved=moved, notes=notes)

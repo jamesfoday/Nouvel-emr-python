@@ -4,12 +4,13 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseBadRequest
-from django.shortcuts import get_object_or_404, render
+from django.http import HttpResponseBadRequest, HttpResponse
+from django.shortcuts import get_object_or_404, render, redirect
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from django.template.loader import render_to_string
 from django.template import TemplateDoesNotExist
+from django.urls import reverse
 
 from apps.accounts.models import User
 from apps.patients.models import Patient
@@ -37,6 +38,37 @@ def appointments_home(request):
     Console landing page for appointments (HTMX-friendly).
     """
     return render(request, "appointments/console/home.html", {})
+
+
+def _active_clinician(request):
+    """Figure out which clinician this page is for."""
+    pk = request.GET.get("clinician")
+    if pk:
+        c = get_object_or_404(User, pk=pk, is_staff=True)
+        if request.user.is_superuser or request.user.pk == c.pk:
+            return c
+
+    # 2) the logged-in staff user
+    if getattr(request.user, "is_staff", False):
+        return request.user
+
+    # 3) fallback
+    qs = _clinician_qs()
+    return qs.first()
+
+
+@login_required
+@require_GET
+def new_appointment_page(request):
+    clinician = _active_clinician(request)
+    clinicians = _clinician_qs()
+    ctx = {
+        "clinician": clinician,
+        "clinicians": clinicians,
+        "date_default": timezone.localdate().isoformat(),
+        "durations": [15, 20, 30, 45, 60],
+    }
+    return render(request, "appointments/console/create.html", ctx)
 
 
 @login_required
@@ -151,6 +183,9 @@ def create_from_slot(request):
     if timezone.is_naive(end):
         end = timezone.make_aware(end)
 
+    # NEW: allow override when user clicks "Create anyway" in conflict panel
+    ignore = request.POST.get("ignore_conflicts") == "1"
+
     conflicts = list(
         conflicting_appointments(
             clinician_id=int(clinician_id),
@@ -159,7 +194,7 @@ def create_from_slot(request):
             end=end,
         )
     )
-    if conflicts:
+    if conflicts and not ignore:
         return render(
             request,
             "appointments/_conflict.html",
@@ -189,4 +224,8 @@ def create_from_slot(request):
     except Exception:
         pass
 
-    return render(request, "appointments/_created_ok.html", {"appt": appt})
+    # Redirect to clinician consultation list
+    redirect_url = reverse("clinicians_ui:consultations_all", args=[int(clinician_id)])
+    if request.headers.get("HX-Request"):
+        return HttpResponse(status=204, headers={"HX-Redirect": redirect_url})
+    return redirect(redirect_url)

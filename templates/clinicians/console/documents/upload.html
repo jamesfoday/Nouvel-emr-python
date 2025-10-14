@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mx-auto mt-6 w-full max-w-3xl px-3 sm:px-6">
+  <div class="rounded-2xl bg-[#EAF5ED] p-1">
+    <div class="rounded-2xl bg-white p-4 sm:p-6 shadow">
+      <h1 class="text-xl font-semibold mb-6">Upload Document</h1>
+
+      {% if error %}
+        <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {{ error }}
+        </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data" id="upload-form">
+        {% csrf_token %}
+
+        <!-- Patient search (uses the same lightweight pick_list endpoint) -->
+        <div class="mb-5">
+          <label class="block text-gray-700 font-semibold mb-2">Patient</label>
+          <div class="relative">
+            <input
+              type="text"
+              name="patient_query"
+              placeholder="Search patient"
+              class="w-full rounded-full border border-gray-300 px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              hx-get="{% url 'patients_ui:pick_list' %}"
+              hx-target="#patient-results"
+              hx-trigger="input changed delay:300ms"
+              autocomplete="off">
+            <svg class="pointer-events-none absolute right-3 top-2.5 h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none">
+              <path d="M21 21l-4.3-4.3m1.3-5.2a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </div>
+          <input type="hidden" name="patient_id" id="patient_id">
+          <div id="patient-results" class="mt-3 max-h-64 overflow-auto"></div>
+        </div>
+
+        <div class="mb-5">
+          <label class="block text-gray-700 font-semibold mb-2">Title</label>
+          <input type="text" name="title" class="w-full rounded-md border px-3 py-2" placeholder="Document name">
+        </div>
+
+        <!-- Drag & drop zone -->
+        <div id="dropzone" class="mb-6 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-center">
+          <p class="mb-2 text-gray-700 font-medium">Drag & drop file here</p>
+          <p class="mb-4 text-sm text-gray-500">PDF, PNG, JPG • max 10MB</p>
+          <label class="inline-flex cursor-pointer rounded-md bg-blue-600 px-4 py-2 text-white font-semibold">
+            Choose file
+            <input type="file" name="file" id="file-input" class="hidden" accept=".pdf,.png,.jpg,.jpeg" />
+          </label>
+          <div id="file-name" class="mt-3 text-sm text-gray-600"></div>
+        </div>
+
+        <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <a href="{% url 'documents_ui:list' clinician.pk %}"
+             class="w-full sm:w-auto rounded-md bg-red-600 px-6 py-2 font-semibold text-white">Cancel</a>
+          <button class="w-full sm:w-auto rounded-md bg-blue-600 px-6 py-2 font-semibold text-white">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Fill the hidden field and mirror the label into the search input
+  function selectPatient(id, label){
+    document.getElementById('patient_id').value = id;
+    const input = document.querySelector('input[name="patient_query"]');
+    if (input) input.value = label;
+  }
+
+  // Delegate clicks from the HTMX-rendered pick list (buttons with class="pick-patient")
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('button.pick-patient');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const label = btn.dataset.label || '';
+    if (window.selectPatient) window.selectPatient(id, label);
+    const box = document.getElementById('patient-results');
+    if (box) box.innerHTML = '';
+  });
+
+  // Drag & drop helpers
+  const drop = document.getElementById('dropzone');
+  const input = document.getElementById('file-input');
+  const nameBox = document.getElementById('file-name');
+
+  function showName(f){ nameBox.textContent = f ? `Selected: ${f.name}` : ""; }
+
+  drop.addEventListener('click', () => input.click());
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('ring-2','ring-blue-400'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('ring-2','ring-blue-400'));
+  drop.addEventListener('drop', (e) => {
+    e.preventDefault();
+    drop.classList.remove('ring-2','ring-blue-400');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      input.files = e.dataTransfer.files; // attach dropped file to the form input
+      showName(input.files[0]);
+    }
+  });
+  input.addEventListener('change', () => showName(input.files[0]));
+</script>
+{% endblock %}

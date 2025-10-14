@@ -1,0 +1,57 @@
+{% load static %}
+
+<section class="rounded-2xl bg-white ring-1 ring-black/5 p-4 sm:p-6">
+  <!-- <header class="flex items-center justify-between border-b pb-3 mb-4">
+    <h3 class="text-base sm:text-lg font-semibold text-gray-900">Consultation</h3>
+
+    {# optional actions on the right could go here #}
+  </header> -->
+
+  {% if appts %}
+    <ul class="space-y-3">
+      {% for a in appts %}
+        {% with doc=a.clinician %}
+        {% with full_name=doc.get_full_name|default:doc.username %}
+        {% with initial=full_name|slice:":1" %}
+        <li class="rounded-xl border border-gray-200 p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
+          <!-- Avatar -->
+          <span class="h-12 w-12 rounded-full overflow-hidden bg-gray-200 grid place-items-center text-sm font-semibold text-gray-700 shrink-0">
+            {% if doc and doc.avatar %}
+              <img src="{{ doc.avatar.url }}" alt="" class="h-full w-full object-cover" />
+            {% elif doc and doc.profile and doc.profile.avatar %}
+              <img src="{{ doc.profile.avatar.url }}" alt="" class="h-full w-full object-cover" />
+            {% else %}
+              {{ initial|upper }}
+            {% endif %}
+          </span>
+
+          <!-- Details -->
+          <div class="min-w-0 flex-1">
+            <div class="font-semibold truncate">
+              {% if doc %}Dr {{ full_name }}{% else %}Consultation{% endif %}
+            </div>
+            <div class="text-sm text-gray-500">
+              {% if a.start %}
+                {{ a.start|date:"D, M j" }} · {{ a.start|time:"H:i" }}
+              {% endif %}
+              {% if a.location %}
+                · {{ a.location }}
+              {% endif %}
+            </div>
+            {% if a.meet_url %}
+              <a href="{{ a.meet_url }}"
+                 class="inline-flex mt-2 items-center rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">
+                Go to meeting
+              </a>
+            {% endif %}
+          </div>
+        </li>
+        {% endwith %}
+        {% endwith %}
+        {% endwith %}
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="grid place-items-center h-24 text-gray-400 text-sm">No upcoming consultations.</div>
+  {% endif %}
+</section>

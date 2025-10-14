@@ -1,0 +1,8 @@
+{% if total and total > 0 %}
+<span id="inbox-badge"
+      class="inline-flex items-center justify-center min-w-[1.1rem] h-5 rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white">
+  {{ total }}
+</span>
+{% else %}
+<span id="inbox-badge"></span>
+{% endif %}

@@ -1,0 +1,22 @@
+{% if tests %}
+  <div class="space-y-2">
+    {% for t in tests %}
+      <div class="rounded-lg border border-gray-200 p-3 flex items-center justify-between">
+        <div class="min-w-0">
+          <div class="font-medium truncate">{{ t.title|default:t.filename|default:"Test Result" }}</div>
+          <div class="text-xs text-gray-500">{{ t.created_at|date:"M j, Y" }}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          {% if t.file %}
+            <a href="{{ t.file.url }}" target="_blank" class="text-emerald-700 text-sm underline">View</a>
+            <a href="{{ t.file.url }}" download class="text-emerald-700 text-sm underline">Download</a>
+          {% else %}
+            <span class="text-gray-400 text-sm">No file</span>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-gray-400 text-sm">No recent test results.</div>
+{% endif %}

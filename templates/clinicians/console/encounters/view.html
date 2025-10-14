@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mx-auto mt-4 w-full max-w-6xl px-3 sm:px-4">
+  <div class="rounded-2xl bg-[#EAF5ED] p-1">
+    <div class="rounded-2xl bg-white p-4 sm:p-6 shadow">
+      <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 class="text-xl font-semibold">{{ enc.patient.full_name }}</h1>
+          <p class="text-sm text-gray-500">{{ enc.start|date:"d M Y, H:i" }} · {{ enc.get_status_display }}{% if enc.location %} · {{ enc.location }}{% endif %}</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <a href="{% url 'encounters_ui:close' clinician.pk enc.pk %}"
+             class="rounded-md bg-gray-900 px-4 py-2 text-white font-semibold {% if enc.status == 'closed' %}opacity-50 pointer-events-none{% endif %}">
+            Close encounter
+          </a>
+          <a href="{% url 'encounters_ui:list' clinician.pk %}" class="text-blue-600 underline">Back to encounters</a>
+        </div>
+      </div>
+
+      <div class="grid gap-6 md:grid-cols-2">
+        <!-- Vitals card -->
+        <div id="vitals-card" class="rounded-xl border bg-white/60 p-4">
+          {% include "clinicians/console/encounters/_vitals.html" with enc=enc vitals=vitals %}
+        </div>
+
+        <!-- Notes card -->
+        <div id="notes-card" class="rounded-xl border bg-white/60 p-4">
+          {% include "clinicians/console/encounters/_notes.html" with enc=enc notes=notes %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

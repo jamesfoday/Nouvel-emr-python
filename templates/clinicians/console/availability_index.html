@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Availability · {{ clinician.get_full_name|default:clinician.username }}{% endblock %}
+
+{% block content %}
+<div class="py-10">
+  <div class="mx-auto w-full max-w-6xl px-4 sm:px-6 rounded-3xl bg-emerald-50/30 shadow-xl ring-1 ring-white/20 py-8">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-semibold text-gray-900">Availability</h1>
+      <div class="flex items-center gap-2">
+        <a href="{% url 'clinicians_ui:dashboard' clinician.pk %}"
+           class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white">
+          ← Back
+        </a>
+      </div>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+      {# Left: weekly windows list #}
+      <div class="md:col-span-2 rounded-2xl border border-white/30 bg-white/60 p-4 backdrop-blur">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold text-gray-900">Weekly windows</h2>
+          <a hx-get="{% url 'clinicians_ui:availability_new' clinician.pk %}"
+             hx-target="#availability-dialog"
+             class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:brightness-95 cursor-pointer">
+            Create
+          </a>
+        </div>
+
+        <div id="availability-list"
+             hx-get="{% url 'clinicians_ui:availability_list_partial' clinician.pk %}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          {# list partial loads here #}
+        </div>
+      </div>
+
+      {# Right: preview free slots #}
+      <div class="rounded-2xl border border-white/30 bg-white/60 p-4 backdrop-blur hidden md:block">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold text-gray-900">Preview (next 7 days)</h2>
+          <button class="rounded-xl bg-gray-100 px-3 py-1.5 text-sm"
+                  hx-get="{% url 'clinicians_ui:availability_preview_partial' clinician.pk %}"
+                  hx-target="#availability-preview"
+                  hx-swap="innerHTML">Refresh</button>
+        </div>
+
+        <div id="availability-preview"
+             hx-get="{% url 'clinicians_ui:availability_preview_partial' clinician.pk %}"
+             hx-trigger="load, availability:refresh-preview from:body"
+             hx-swap="innerHTML">
+          <ul class="space-y-2">
+            {% for s in preview %}
+              <li class="rounded-xl border border-black/5 bg-white px-3 py-2 text-sm text-gray-700">
+                {{ s.start|date:"D, M j" }} · {{ s.start|time:"H:i" }}
+              </li>
+            {% empty %}
+              <li class="text-sm text-gray-500">No free slots found.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Modal/inline container for form #}
+  <div id="availability-dialog" class="mx-auto max-w-2xl mt-4"></div>
+</div>
+
+<script>
+  // Close the modal after HTMX finishes swapping the refreshed list
+  document.body.addEventListener('availability:close', function () {
+    var dlg = document.getElementById('availability-dialog');
+    if (dlg) dlg.innerHTML = '';
+  });
+</script>
+{% endblock %}

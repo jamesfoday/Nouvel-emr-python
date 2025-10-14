@@ -1,61 +1,69 @@
-<table class="table patients-table">
-  <thead>
-    <tr>
-      <th scope="col">Name</th>
-      <th scope="col">DOB</th>
-      <th scope="col">E-mail</th>
-      <th scope="col">Phone</th>
-      <th scope="col">External ID</th>
-      <th scope="col" class="col-action">Action</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for p in patients %}
-      <tr data-patient-id="{{ p.id }}">
-        <td class="name">
-          <strong>{{ p.family_name }}, {{ p.given_name }}</strong>
-          <div class="muted" style="font-size: 12px;">ID: {{ p.id }}</div>
-        </td>
-        <td>
-          {% if p.date_of_birth %}
-            <time datetime="{{ p.date_of_birth|date:'Y-m-d' }}">{{ p.date_of_birth|date:"Y-m-d" }}</time>
-          {% else %}
-            —
-          {% endif %}
-        </td>
-        <td>
-          {% if p.email %}
-            <a href="mailto:{% firstof p.email %}">{{ p.email }}</a>
-          {% else %}
-            —
-          {% endif %}
-        </td>
-        <td>
-          {% if p.phone %}
-            <a href="tel:{% firstof p.phone %}">{{ p.phone }}</a>
-          {% else %}
-            —
-          {% endif %}
-        </td>
-        <td>{{ p.external_id|default:"—" }}</td>
-        <td class="col-action">
-          <button
-            class="btn btn-primary"
-            hx-get="/console/appointments/book?patient_id={{ p.id }}"
-            hx-target="#modal"
-            hx-swap="innerHTML"
-            hx-indicator="#busy-indicator"
-          >
-            Book
-          </button>
-        </td>
-      </tr>
-    {% empty %}
+{# templates/patients/_table.html #}
+<div class="overflow-x-auto">
+  <table class="min-w-full text-sm">
+    <thead class="text-left text-gray-600">
       <tr>
-        <td colspan="6">
-          <div class="empty-row">No patients yet. Try a different search.</div>
+        <th class="px-3 py-2">ID</th>
+        <th class="px-3 py-2">Name</th>
+        <th class="px-3 py-2">Action</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y">
+      {% for p in patients %}
+      <tr class="hover:bg-white/50 {% if highlight_id == p.id %}ring-2 ring-emerald-300/60 rounded-lg{% endif %}">
+        <!-- ID -->
+        <td class="px-3 py-3 align-top">
+          <a href="{% url 'patients_ui:detail' pk=p.id %}" class="text-emerald-700 hover:underline">
+            {% if p.external_id %}{{ p.external_id }}{% else %}PT-{{ p.id|stringformat:"06d" }}{% endif %}
+          </a>
+        </td>
+
+        <!-- Name -->
+        <td class="px-3 py-3 align-top">
+          <a href="{% url 'patients_ui:detail' pk=p.id %}" class="font-semibold text-gray-800 hover:underline">
+            {{ p.family_name }}, {{ p.given_name }}
+          </a>
+        </td>
+
+        <!-- Actions -->
+        <td class="px-3 py-3 align-top">
+          <div class="flex flex-col gap-2 text-xs sm:flex-row sm:items-center sm:gap-4">
+            <a href="{% url 'patients_ui:patients_edit' pk=p.id %}" class="inline-flex items-center gap-1 text-gray-700">
+              Edit
+            </a>
+
+            <form method="post" action="{% url 'patients_ui:patients_deactivate' pk=p.id %}"
+                  onsubmit="return confirm('Deactivate this patient?');" class="inline">
+              {% csrf_token %}
+              <button type="submit" class="inline-flex items-center gap-1 text-rose-600">
+                Deactivate
+              </button>
+            </form>
+
+            {% if request.user.is_staff or request.user.is_superuser %}
+            <div class="flex items-center gap-2">
+              <button type="button"
+                      class="login-link-btn text-emerald-700 hover:underline inline-flex items-center gap-1"
+                      data-url="{% url 'patients_ui:patients_login_link' pk=p.pk %}">
+                Login link
+              </button>
+              <div class="login-link-popover hidden items-center gap-2">
+                <input type="text"
+                       class="w-56 sm:w-80 rounded-md border px-2 py-1 text-[11px] text-gray-700"
+                       readonly value="">
+                <button type="button"
+                        class="copy-link-btn rounded-md bg-emerald-600 px-2 py-1 text-white">
+                  Copy
+                </button>
+              </div>
+            </div>
+            {% endif %}
+          </div>
         </td>
       </tr>
-    {% endfor %}
-  </tbody>
-</table>
+      {% empty %}
+      <tr><td colspan="3" class="px-3 py-10 text-center text-gray-500">No patients yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

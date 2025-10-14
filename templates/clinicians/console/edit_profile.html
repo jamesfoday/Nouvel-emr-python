@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="mx-auto mt-6 w-full max-w-3xl px-3 sm:px-6">
+  <div class="rounded-2xl bg-[#EAF5ED] p-1">
+    <div class="rounded-2xl bg-white p-4 sm:p-6 shadow">
+      <h1 class="text-xl font-semibold mb-6">Edit profile</h1>
+
+      {% if messages %}
+        <div class="space-y-2 mb-4">
+          {% for m in messages %}
+            <div class="rounded-md px-3 py-2 text-sm
+                        {% if m.tags == 'error' %}bg-red-50 text-red-700 border border-red-200
+                        {% elif m.tags == 'success' %}bg-emerald-50 text-emerald-700 border border-emerald-200
+                        {% else %}bg-gray-50 text-gray-700 border border-gray-200{% endif %}">
+              {{ m }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Avatar -->
+          <div class="md:col-span-1">
+            <label class="block text-gray-700 font-semibold mb-2">Avatar</label>
+
+            <div class="text-center">
+              {% if clinician.avatar %}
+                <img id="avatar-preview" src="{{ clinician.avatar.url }}"
+                     class="mx-auto h-20 w-20 rounded-full object-cover ring-1 ring-gray-200" alt="avatar">
+              {% elif clinician.profile and clinician.profile.avatar %}
+                <img id="avatar-preview" src="{{ clinician.profile.avatar.url }}"
+                     class="mx-auto h-20 w-20 rounded-full object-cover ring-1 ring-gray-200" alt="avatar">
+              {% else %}
+                <img id="avatar-preview" src="{% static 'img/avatar-doc.png' %}"
+                     class="mx-auto h-20 w-20 rounded-full object-cover ring-1 ring-gray-200" alt="avatar">
+              {% endif %}
+
+              <!-- hidden input and minimal link BELOW the avatar -->
+              <input id="avatar-input" name="avatar" type="file" accept="image/*" class="sr-only">
+              <label for="avatar-input"
+                     class="mt-2 inline-flex cursor-pointer items-center justify-center text-sm font-medium text-emerald-700 hover:text-emerald-800">
+                Edit
+              </label>
+
+              <p class="mt-1 text-[11px] text-gray-400">PNG/JPG, up to 5MB</p>
+            </div>
+          </div>
+
+          <!-- Basic info -->
+          <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-gray-700 font-semibold mb-1">First name</label>
+              <input name="first_name" value="{{ clinician.first_name }}"
+                     class="w-full rounded-md border px-3 py-2" required>
+            </div>
+            <div>
+              <label class="block text-gray-700 font-semibold mb-1">Last name</label>
+              <input name="last_name" value="{{ clinician.last_name }}"
+                     class="w-full rounded-md border px-3 py-2" required>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-gray-700 font-semibold mb-1">Email</label>
+              <input type="email" name="email" value="{{ clinician.email }}"
+                     class="w-full rounded-md border px-3 py-2" required>
+            </div>
+
+            {% if supports.phone %}
+              <div class="sm:col-span-2">
+                <label class="block text-gray-700 font-semibold mb-1">Phone</label>
+                <input name="phone" value="{{ clinician.phone|default:'' }}"
+                       class="w-full rounded-md border px-3 py-2">
+              </div>
+            {% endif %}
+
+            {% if supports.specialty %}
+              <div>
+                <label class="block text-gray-700 font-semibold mb-1">Specialty</label>
+                <input name="specialty" value="{{ clinician.specialty|default:'' }}"
+                       class="w-full rounded-md border px-3 py-2">
+              </div>
+            {% endif %}
+
+            {% if supports.timezone %}
+              <div>
+                <label class="block text-gray-700 font-semibold mb-1">Timezone</label>
+                <input name="timezone" value="{{ clinician.timezone|default:'' }}"
+                       class="w-full rounded-md border px-3 py-2" placeholder="e.g. Europe/Paris">
+              </div>
+            {% endif %}
+
+            {% if supports.bio %}
+              <div class="sm:col-span-2">
+                <label class="block text-gray-700 font-semibold mb-1">Bio</label>
+                <textarea name="bio" rows="4" class="w-full rounded-md border px-3 py-2"
+                          placeholder="Short professional bio…">{{ clinician.bio|default:'' }}</textarea>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <a href="{% url 'clinicians_ui:dashboard' clinician.pk %}"
+             class="w-full sm:w-auto rounded-md bg-red-600 px-6 py-2 font-semibold text-white">Cancel</a>
+          <button class="w-full sm:w-auto rounded-md bg-emerald-600 px-6 py-2 font-semibold text-white">
+            Save changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Live avatar preview
+  (function () {
+    const input = document.getElementById('avatar-input');
+    const img   = document.getElementById('avatar-preview');
+    if (!input || !img) return;
+    input.addEventListener('change', () => {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = (e) => { img.src = e.target.result; };
+      reader.readAsDataURL(f);
+    });
+  })();
+</script>
+{% endblock %}

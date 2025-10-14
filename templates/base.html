@@ -3,14 +3,19 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{% block title %}Nouvel Console{% endblock %}</title>
 
-    <!-- App styles (our lightweight design system) -->
-    <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+    <!-- Tailwind (dev-only CDN) should load BEFORE our CSS so our rules can override -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- App styles -->
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'css/consultation.css' %}?v=1">
 
     <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 
     <!-- CSRF token for HTMX/XHR -->
     <meta name="csrf-token" content="{{ csrf_token }}">
@@ -21,28 +26,72 @@
       });
     </script>
 
+    <!-- Minimal safety net so layout works even if app.css isn't loaded yet -->
+    <style>
+      :root { --app-bar-h: 64px; }           /* matches h-16 on mobile */
+      @media (min-width:768px){ :root { --app-bar-h: 80px; } } /* md:h-20 */
+      html,body{width:100%;overflow-x:hidden;}
+      main.has-fixed-appbar{
+        padding-top: calc(var(--app-bar-h) + env(safe-area-inset-top,0px));
+        min-height: 100dvh;
+        padding-left:  max(env(safe-area-inset-left,0px), 0px);
+        padding-right: max(env(safe-area-inset-right,0px), 0px);
+        padding-bottom:max(env(safe-area-inset-bottom,0px), 0px);
+      }
+    </style>
+
     {% block head %}{% endblock %}
   </head>
-  <body>
-    <!-- Top navigation -->
-    <header class="nav card">
-      <div class="container" style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="display:flex;gap:10px;align-items:center;">
-          <a href="/console/" class="brand" style="font-weight:700;text-decoration:none;">Nouvel</a>
-          <span class="muted">Console</span>
+
+  <body class="bg-emerald-50/40 overflow-x-hidden">
+    <!-- Sticky Top navigation -->
+    <header id="app-bar"
+            class="sticky top-0 z-40 h-16 md:h-20 border-b border-black/5
+                   bg-white/80 supports-[backdrop-filter]:bg-white/60 backdrop-blur">
+      <div class="max-w-7xl mx-auto h-full px-4 md:px-6
+                  flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <a href="/console/" class="font-bold text-lg no-underline text-gray-900">Nouvel</a>
+          <span class="text-gray-500 hidden sm:inline">Console</span>
+          {% block appbar_left %}{% endblock %}
         </div>
-        <nav style="display:flex;gap:10px;align-items:center;">
-          <a href="/console/patients/">Patients</a>
-          <a href="/console/appointments/">Appointments</a>
-          {% if request.user|in_roles:"admin" %}<a href="/admin/">Admin</a>{% endif %}
-          <a href="/api/docs/">API</a>
-          <span id="busy-indicator" class="htmx-indicator"><span class="spinner"></span>&nbsp;Loading…</span>
+
+        <nav class="flex items-center gap-4 text-sm md:text-base">
+          <a class="hover:underline" href="/console/patients/">Patients</a>
+          <a class="hover:underline" href="/console/appointments/">Appointments</a>
+          {% if request.user|in_roles:"admin" %}
+            <a class="hover:underline" href="/admin/">Admin</a>
+          {% endif %}
+          <a class="hover:underline" href="/api/docs/">API</a>
+
+          {# ---------------- NEW: role-aware inbox badge ---------------- #}
+          {% if request.user.is_authenticated and request.user.is_staff %}
+            {# Clinician badge goes to clinicians_ui namespace #}
+            <span id="clinician-inbox-badge"
+                  hx-get="{% url 'clinicians_ui:unread_badge' request.user.id %}"
+                  hx-trigger="load, every 10s, refresh-badges from:body"
+                  hx-swap="outerHTML"></span>
+          {% elif request.user.is_authenticated %}
+            {# Patient/portal badge uses portal_ui endpoint #}
+            <span id="portal-inbox-badge"
+                  hx-get="{% url 'portal_ui:unread_total_badge' %}"
+                  hx-trigger="load, every 10s, refresh-badges from:body"
+                  hx-swap="outerHTML"></span>
+          {% endif %}
+          {# -------------------------------------------------------------- #}
+
+          <span id="busy-indicator" class="htmx-indicator inline-flex items-center gap-2 text-gray-500">
+            <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></span>
+            Loading…
+          </span>
+          {% block appbar_right %}{% endblock %}
         </nav>
       </div>
     </header>
+ <div id="modal-root"></div>
 
     <!-- Page content -->
-    <main class="container">
+    <main class="has-fixed-appbar">
       {% block content %}{% endblock %}
     </main>
 

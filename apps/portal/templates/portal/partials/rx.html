@@ -1,0 +1,15 @@
+{% if rxs %}
+<ul class="divide-y rounded-xl border">
+  {% for r in rxs %}
+  <li class="p-3 sm:p-4">
+    <div class="text-sm">
+      <div class="font-medium">{{ r.title|default:"Prescription" }}</div>
+      <div class="text-gray-500">{{ r.status|title|default:"Draft" }} • {{ r.created_at|date:"Y-m-d H:i" }}</div>
+      {% if r.body %}<div class="text-gray-600 mt-1 whitespace-pre-wrap">{{ r.body|truncatechars:140 }}</div>{% endif %}
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="text-gray-400 text-sm">No prescriptions yet.</div>
+{% endif %}

@@ -15,6 +15,11 @@ urlpatterns = [
     # /console/appointments/free-slots?clinician_id=...&date=YYYY-MM-DD&duration=30
     path("appointments/free-slots", ui_views.slots_for_day, name="console_free_slots"),
 
-    # POST from the slot list to create the appointment
+    # POST create
     path("appointments/create", ui_views.create_from_slot, name="console_create_appointment"),
+    # Alias so {% url 'create_from_slot' %} 
+    path("appointments/create-from-slot", ui_views.create_from_slot, name="create_from_slot"),
+
+    # Create page
+    path("appointments/new", ui_views.new_appointment_page, name="console_new_appointment"),
 ]

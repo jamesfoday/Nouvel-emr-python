@@ -1,0 +1,24 @@
+{# Context: m (Message), me (User) #}
+{% firstof m.body m.text as msg_text %}
+
+{% if msg_text %}
+  {% if m.from_user_id == me.id %}
+    <div class="mb-2 flex justify-end">
+      <div class="max-w-[80%] rounded-2xl px-3 py-2 text-sm bg-emerald-600 text-white shadow">
+        <div class="whitespace-pre-wrap break-words">{{ msg_text|linebreaksbr }}</div>
+        <div class="mt-1 text-[10px] opacity-80 text-right">
+          {% if m.created_at %}{{ m.created_at|date:"M j, H:i" }}{% endif %}
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="mb-2 flex justify-start">
+      <div class="max-w-[80%] rounded-2xl px-3 py-2 text-sm bg-gray-100 text-gray-800 shadow">
+        <div class="whitespace-pre-wrap break-words">{{ msg_text|linebreaksbr }}</div>
+        <div class="mt-1 text-[10px] opacity-70">
+          {% if m.created_at %}{{ m.created_at|date:"M j, H:i" }}{% endif %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endif %}

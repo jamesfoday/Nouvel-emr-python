@@ -1,40 +1,6 @@
 version: "3.9"
 
 services:
-  web:
-    build: .
-    container_name: nouvel_web
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env.docker
-    depends_on:
-      - db
-      - redis
-
-  worker:
-    build: .
-    container_name: nouvel_worker
-    command: celery -A config.celery:app worker --loglevel=INFO
-    env_file:
-      - .env.docker
-    depends_on:
-      - web
-      - redis
-      - db
-
-  beat:
-    build: .
-    container_name: nouvel_beat
-    command: celery -A config.celery:app beat --loglevel=INFO
-    env_file:
-      - .env.docker
-    depends_on:
-      - worker
-      - redis
-      - db
-
   db:
     image: postgres:16
     container_name: nouvel_db
@@ -44,14 +10,73 @@ services:
       POSTGRES_PASSWORD: nouvel
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nouvel -d nouvel"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    # Expose DB to host only if  needed:
+    # ports:
+    #   - "5432:5432"
 
   redis:
     image: redis:7
     container_name: nouvel_redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+    # Expose only if you need to debug from host:
+    # ports:
+    #   - "6379:6379"
+
+  web:
+    build: .
+    container_name: nouvel_web
+    # collect static + migrate before starting gunicorn
+    command: >
+      bash -lc "python manage.py collectstatic --noinput &&
+                python manage.py migrate &&
+                gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     ports:
-      - "6379:6379"
+      - "8000:8000"
+    env_file:
+      - .env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  worker:
+    build: .
+    container_name: nouvel_worker
+    # ensure DB is migrated before worker starts consuming tasks
+    command: bash -lc "python manage.py migrate && celery -A config.celery:app worker --loglevel=INFO"
+    env_file:
+      - .env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  beat:
+    build: .
+    container_name: nouvel_beat
+    command: bash -lc "celery -A config.celery:app beat --loglevel=INFO"
+    env_file:
+      - .env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
 
 volumes:
   pgdata:
+  redisdata:

@@ -1,0 +1,11 @@
+{# total unread DMs for the clinician #}
+{% if total and total > 0 %}
+  <a id="clinician-inbox-badge"
+     href="{% url 'clinicians_ui:direct_messages' request.user.id %}"
+     class="inline-flex h-6 min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-600 px-2 text-xs font-bold text-white"
+     title="{{ total }} unread messages">
+    {{ total }}
+  </a>
+{% else %}
+  <span id="clinician-inbox-badge"></span>
+{% endif %}

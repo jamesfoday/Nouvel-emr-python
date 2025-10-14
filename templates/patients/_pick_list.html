@@ -1,0 +1,36 @@
+{# HTMX fragment: patient search results for the Create Appointment page #}
+
+{% if patients %}
+  <ul class="space-y-2">
+    {% for p in patients %}
+      {% with name=p.get_full_name|default:p|stringformat:"s" %}
+      {% with initial=name|slice:":1"|upper %}
+      <li>
+        <button type="button"
+                class="w-full flex items-center gap-3 rounded-2xl border border-white/40 bg-white/70 px-3 py-2
+                       text-left shadow-sm hover:bg-white/90 focus:outline-none"
+                data-patient-id="{{ p.id }}"
+                data-patient-label="{{ name }}">
+          <span class="grid h-9 w-9 place-items-center shrink-0 rounded-full ring-1 ring-black/5
+                         bg-gradient-to-br from-emerald-100 to-emerald-50 text-emerald-900 font-bold">
+            {{ initial }}
+          </span>
+          <span class="min-w-0">
+            <span class="block truncate text-sm font-semibold text-gray-900">
+              {{ name }}
+            </span>
+            <span class="block truncate text-xs text-gray-500">
+              {{ p.date_of_birth }} · {{ p.email }}
+            </span>
+          </span>
+        </button>
+      </li>
+      {% endwith %}
+      {% endwith %}
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="rounded-xl border border-white/40 bg-white/60 px-3 py-2 text-sm text-gray-500">
+    No patients found.
+  </div>
+{% endif %}

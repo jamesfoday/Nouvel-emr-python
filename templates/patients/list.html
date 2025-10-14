@@ -1,19 +1,90 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 style="margin:0 0 12px 0;">Patients</h2>
+<div class="mx-auto mt-6 w-full max-w-7xl px-3 sm:px-6">
+  <div class="rounded-2xl bg-[#EAF5ED] p-1">
+    <div class="rounded-2xl bg-white p-4 sm:p-6 shadow">
+      <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <a href="{% url 'patients_ui:patients_create' %}"
+           class="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-800">
+          Create <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-white">+</span>
+        </a>
+        <h1 class="text-lg sm:text-xl font-semibold text-gray-700">Patients</h1>
+        <form method="get" class="w-full sm:w-64">
+          <input type="text" name="q" value="{{ q|default:'' }}" placeholder="Search by name, email, phone"
+                 class="w-full rounded-full border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+        </form>
+      </div>
 
-<div>
-  <input
-    name="q" id="q" value="{{ q }}" placeholder="Search name / email / phone"
-    hx-get="/console/patients/"
-    hx-trigger="keyup changed delay:300ms"
-    hx-target="#results"
-    hx-push-url="true"
-    style="padding:8px; border:1px solid #ddd; border-radius:6px; width:320px;"
-  />
+      <div class="rounded-2xl bg-[#F4FAF5] p-2 sm:p-4">
+        {% include "patients/_table.html" with patients=patients highlight_id=highlight_id %}
+      </div>
+
+      <div class="mt-8">
+        <a href="{% url 'clinicians_ui:dashboard' request.user.pk %}" class="inline-flex items-center gap-2 text-gray-700">
+          <span class="grid h-8 w-8 place-items-center rounded-full bg-gray-100">&lsaquo;</span> Back
+        </a>
+      </div>
+    </div>
+  </div>
 </div>
 
-<div id="results" style="margin-top:12px;">
-  {% include "patients/_table.html" %}
-</div>
+{% if request.user.is_staff or request.user.is_superuser %}
+<script>
+  async function fetchLoginLink(url, cell) {
+    const btn    = cell.querySelector(".login-link-btn");
+    const pop    = cell.querySelector(".login-link-popover");
+    const input  = pop?.querySelector("input");
+    const copyBt = pop?.querySelector(".copy-link-btn");
+
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Generating…";
+
+    try {
+      const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+      if (!resp.ok) throw new Error(await resp.text() || `HTTP ${resp.status}`);
+      const data = await resp.json();
+
+      if (input) {
+        input.value = data.link || "";
+        pop.classList.remove("hidden");
+      }
+      if (navigator.clipboard && data.link) {
+        try { await navigator.clipboard.writeText(data.link); } catch (_) {}
+      }
+
+      btn.textContent = "Link ready";
+      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1800);
+
+      copyBt?.addEventListener("click", async () => {
+        if (!input?.value) return;
+        try {
+          await navigator.clipboard.writeText(input.value);
+          copyBt.textContent = "Copied";
+          setTimeout(() => (copyBt.textContent = "Copy"), 1200);
+        } catch (_) {
+          input.select();
+          document.execCommand("copy");
+        }
+      }, { once: true });
+
+    } catch (e) {
+      console.error(e);
+      alert("Could not generate login link. Ensure the patient has an email.");
+      btn.textContent = original;
+      btn.disabled = false;
+    }
+  }
+
+  // Works for this page and for partials if you reuse it elsewhere
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".login-link-btn");
+    if (!btn) return;
+    e.preventDefault();
+    const cell = btn.closest("td") || document;
+    const url = btn.dataset.url;
+    if (url) fetchLoginLink(url, cell);
+  });
+</script>
+{% endif %}
 {% endblock %}

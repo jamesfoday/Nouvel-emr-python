@@ -1,0 +1,29 @@
+<h2 class="mb-3 text-lg font-semibold">Notes</h2>
+
+<form class="mb-4 flex flex-col gap-2"
+      hx-post="{% url 'encounters_ui:add_note' clinician.pk enc.pk %}"
+      hx-target="#notes-card" hx-swap="outerHTML">
+  {% csrf_token %}
+  <div class="flex items-center gap-2">
+    <select name="kind" class="rounded-md border px-3 py-2">
+      <option value="S">Subjective</option>
+      <option value="O">Objective</option>
+      <option value="A">Assessment</option>
+      <option value="P">Plan</option>
+      <option value="N" selected>Note</option>
+    </select>
+    <button class="rounded-md bg-blue-600 px-4 py-2 text-white font-semibold">Add</button>
+  </div>
+  <textarea name="content" rows="3" class="w-full rounded-md border px-3 py-2" placeholder="Type a quick note..."></textarea>
+</form>
+
+<ul class="space-y-3">
+  {% for n in notes %}
+  <li class="rounded-lg border bg-white px-3 py-2">
+    <div class="text-sm text-gray-500">{{ n.created_at|date:"d M Y, H:i" }} · {{ n.author.get_full_name|default:n.author.username }} · {{ n.get_kind_display }}</div>
+    <div class="whitespace-pre-wrap">{{ n.content }}</div>
+  </li>
+  {% empty %}
+  <li class="text-gray-500">No notes yet.</li>
+  {% endfor %}
+</ul>

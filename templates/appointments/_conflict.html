@@ -1,8 +1,31 @@
-<div class="alert success">
-  <strong>Booked!</strong>
-  <p>
-    Appointment #{{ appt.id }}: {{ appt.start|date:"D, d M H:i" }} → {{ appt.end|date:"H:i" }}.
-    <a href="/api/v1/appointments/{{ appt.id }}/ics/">Download ICS</a>
-  </p>
-  <button class="btn" onclick="document.getElementById('modal').innerHTML=''">Close</button>
+<div class="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
+  <div class="font-semibold">This time conflicts with existing appointments:</div>
+
+  <ul class="mt-2 list-disc pl-5 text-sm">
+    {% for c in conflicts %}
+      <li>
+        {{ c.patient }} · {{ c.start|date:"Y-m-d H:i" }}–{{ c.end|date:"H:i" }}
+      </li>
+    {% endfor %}
+  </ul>
+
+  <div class="mt-4 flex flex-col sm:flex-row gap-2 sm:justify-end">
+    <button
+      type="button"
+      class="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700">
+      Pick another time
+    </button>
+
+    {# IMPORTANT: type="button" so we use HTMX, not native submit #}
+    <button
+      type="button"
+      class="rounded-xl bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:brightness-95"
+      hx-post="{% url 'appointments_ui:console_create_appointment' %}"
+      hx-target="#result-panel"
+      hx-swap="innerHTML"
+      hx-include="#create-form"
+      hx-vals='{"ignore_conflicts":"1"}'>
+      Create anyway
+    </button>
+  </div>
 </div>

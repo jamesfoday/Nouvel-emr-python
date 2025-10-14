@@ -1,0 +1,67 @@
+<div id="p-msgs-card"
+     class="dm-card h-[22rem] sm:h-[24rem] md:h-[26rem] lg:h-[20rem] flex flex-col rounded-2xl bg-white ring-1 ring-black/5">
+
+  <header class="flex items-center justify-between border-b px-4 sm:px-6 py-3">
+    <div class="flex items-center gap-2">
+      <button type="button"
+              class="mr-1 rounded-full p-1 hover:bg-gray-100"
+              hx-get="{% url 'portal_ui:messages_panel' %}"
+              hx-target="#p-msgs-card"
+              hx-swap="outerHTML"
+              aria-label="Back to clinicians">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+          <path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <h3 class="text-base sm:text-lg font-semibold text-gray-900">
+        Dr {{ clinician.get_full_name|default:clinician.username }}
+      </h3>
+    </div>
+  </header>
+
+  <div id="p-thread" class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-white">
+    {% if msgs %}
+      {% for m in msgs %}
+        {% include "portal/partials/_msg_bubble.html" with m=m me=request.user %}
+      {% endfor %}
+    {% else %}
+      <p class="text-gray-400">Nothing yet.</p>
+    {% endif %}
+  </div>
+
+  <footer class="border-t px-4 sm:px-6 py-3 bg-white">
+    <form id="p-send-form"
+          hx-post="{% url 'portal_ui:messages_send' %}"
+          hx-target="#p-thread"
+          hx-swap="beforeend">
+      {% csrf_token %}
+      <input type="hidden" name="clinician_id" id="p-cid" value="{{ clinician.pk }}">
+      <div class="flex gap-2">
+        {% if admin_preview %}
+          <input id="p-body" name="body" type="text"
+                 class="flex-1 rounded-xl border px-4 py-2 text-sm bg-gray-50"
+                 placeholder="Admin preview — sending disabled" disabled>
+          <button class="rounded-xl bg-emerald-600 px-4 py-2 text-white font-medium opacity-50" disabled>Send</button>
+        {% else %}
+          <input id="p-body" name="body" type="text"
+                 class="flex-1 rounded-xl border px-4 py-2 text-sm"
+                 placeholder="Type your message…">
+          <button class="rounded-xl bg-emerald-600 px-4 py-2 text-white font-medium">Send</button>
+        {% endif %}
+      </div>
+    </form>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    const thread = document.getElementById('p-thread');
+    const scrollBottom = () => { thread.scrollTop = thread.scrollHeight; };
+    scrollBottom();
+    document.addEventListener('htmx:afterSwap', function (evt) {
+      if (evt.target === thread) scrollBottom();
+    });
+    const input = document.getElementById('p-body');
+    if (input && !input.disabled) input.focus({ preventScroll: false });
+  })();
+</script>

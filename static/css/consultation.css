@@ -1,0 +1,18 @@
+.height{
+    height: 700px;
+    overflow-y: hidden !important;
+}
+
+
+
+@media (min-width: 48em) {
+  .height-shell{
+    height: 700px !important;
+    
+}
+
+.list-borderl{
+    height: 400px !important;
+    
+}
+}

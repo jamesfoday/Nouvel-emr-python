@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Create Appointment · {{ clinician.get_full_name|default:clinician.username }}{% endblock %}
+
+{% block content %}
+<div class="py-10 sm:py-10">
+  <div class="mx-auto w-full max-w-5xl px-4 sm:px-6 rounded-3xl bg-emerald-50/30 shadow-xl backdrop-blur-lg
+              supports-[backdrop-filter]:bg-emerald-50/20 ring-1 ring-white/20 py-10 sm:py-12">
+
+    {# ====== Glass header (matches list page) ====== #}
+    <div class="sticky top-[calc(var(--app-bar-h)+8px)] z-10 mb-5 sm:mb-6">
+      <div class="rounded-2xl border border-white/30 bg-white/50 p-3 sm:p-4 shadow-md
+                  backdrop-blur supports-[backdrop-filter]:bg-white/40">
+        <div class="flex items-center justify-between gap-3">
+          <h1 class="text-lg sm:text-2xl font-semibold tracking-tight text-gray-900">
+            Create Appointment
+          </h1>
+          <div class="flex items-center gap-2">
+            <a href="{% url 'clinicians_ui:consultations_all' clinician.pk %}"
+               class="hidden sm:inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:brightness-95 active:brightness-90">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M10 19l-7-7 7-7M3 12h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Back to Consultations
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ====== Glass body ====== #}
+    <div class="rounded-3xl border border-white/30 bg-white/60 p-4 sm:p-6 shadow-xl
+                backdrop-blur supports-[backdrop-filter]:bg-white/50">
+      <!-- Results area (conflicts or errors) -->
+      <div id="result-panel" class="mb-4"></div>
+
+      <form
+        id="create-form"
+        hx-post="{% url 'appointments_ui:console_create_appointment' %}"
+        hx-target="#result-panel"
+        hx-swap="innerHTML"
+        onsubmit="return preparePayload(event)"
+      >
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+          {# ---- LEFT: Patient search ---- #}
+          <div class="md:col-span-4 min-w-0">
+            <label class="block text-gray-700 font-semibold mb-2">Patient</label>
+            <div class="relative">
+              <input type="text" name="patient_query" placeholder="Search patient"
+                     class="w-full rounded-2xl border border-white/40 bg-white/60 px-4 py-2 pr-10
+                            shadow-inner outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100
+                            backdrop-blur supports-[backdrop-filter]:bg-white/50"
+                     hx-get="{% url 'patients_ui:pick_list' %}"
+                     hx-target="#patient-results"
+                     hx-trigger="input changed delay:300ms"
+                     autocomplete="off" />
+              <svg class="pointer-events-none absolute right-3 top-2.5 h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none">
+                <path d="M21 21l-4.3-4.3m1.3-5.2a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"
+                      stroke="currentColor" stroke-width="2" />
+              </svg>
+            </div>
+            <input type="hidden" name="patient_id" id="patient_id" />
+            <div id="patient-results" class="mt-3 max-h-64 overflow-auto"></div>
+
+            <div class="mt-3 text-sm text-gray-500">
+              Need a new patient?
+              <a href="{% url 'patients_ui:patients_home' %}" class="text-emerald-700 underline">Open patients</a>
+            </div>
+          </div>
+
+          {# ---- RIGHT: Clinician, date/time, reason, location ---- #}
+          <div class="md:col-span-8 min-w-0">
+            <div class="grid gap-6">
+              <div>
+                <label class="block text-gray-700 font-semibold mb-2">Clinician</label>
+                <select name="clinician_id" id="clinician_id"
+                        class="w-full rounded-2xl border border-white/40 bg-white/60 px-3 py-2
+                               shadow-inner outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100
+                               backdrop-blur supports-[backdrop-filter]:bg-white/50">
+                  {% for c in clinicians %}
+                  <option value="{{ c.id }}" {% if c.id == clinician.id %}selected{% endif %}>
+                    {{ c.get_full_name|default:c.username }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-gray-700 font-semibold mb-2">Date</label>
+                <input type="date" id="date" name="date" value="{{ date_default }}"
+                       class="w-full rounded-2xl border border-white/40 bg-white/60 px-3 py-2
+                              shadow-inner outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100
+                              backdrop-blur supports-[backdrop-filter]:bg-white/50" />
+              </div>
+
+              <div>
+                <label class="block text-gray-700 font-semibold mb-2">Time</label>
+                <div class="flex flex-wrap items-center gap-2">
+                  <select name="hour" id="hour"
+                          class="rounded-2xl border border-white/40 bg-white/60 px-3 py-2
+                                 shadow-inner outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100
+                                 backdrop-blur supports-[backdrop-filter]:bg-white/50"
+                          data-prefill="09"></select>
+
+                  <select name="minute" id="minute"
+                          class="rounded-2xl border border-white/40 bg-white/60 px-3 py-2
+                                 shadow-inner outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100
+                                 backdrop-blur supports-[backdrop-filter]:bg-white/50">
+                    <option value="00" selected>00</option>
+                    <option value="15">15</option>
+                    <option value="30">30</option>
+                    <option value="45">45</option>
+                  </select>
+
+                  <span class="text-gray-500">Duration</span>
+                  <select name="duration" id="duration"
+                          class="rounded-2xl border border-white/40 bg-white/60 px-3 py-2
+                                 shadow-inner outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100
+                                 backdrop-blur supports-[backdrop-filter]:bg-white/50">
+                    {% for d in durations %}
+                      <option value="{{ d }}" {% if d == 15 %}selected{% endif %}>{{ d }} min</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-gray-700 font-semibold mb-2">Reason (optional)</label>
+                  <input type="text" name="reason"
+                         class="w-full rounded-2xl border border-white/40 bg-white/60 px-3 py-2
+                                shadow-inner outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100
+                                backdrop-blur supports-[backdrop-filter]:bg-white/50" />
+                </div>
+                <div>
+                  <label class="block text-gray-700 font-semibold mb-2">Location (optional)</label>
+                  <input type="text" name="location" value="online"
+                         class="w-full rounded-2xl border border-white/40 bg-white/60 px-3 py-2
+                                shadow-inner outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100
+                                backdrop-blur supports-[backdrop-filter]:bg-white/50" />
+                </div>
+              </div>
+
+              {# If you set status in backend default, you can remove this. Safe to include: #}
+              <input type="hidden" name="status" value="scheduled" />
+            </div>
+          </div>
+        </div>
+
+        {# Hidden fields expected by create_from_slot #}
+        <input type="hidden" name="start" id="start">
+        <input type="hidden" name="end" id="end">
+
+        {# Footer #}
+        <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <a href="{% url 'clinicians_ui:consultations_all' clinician.pk %}"
+             class="w-full sm:w-auto rounded-2xl bg-red-600 px-6 py-2 font-semibold text-white shadow-md hover:brightness-95 active:brightness-90">
+            Cancel
+          </a>
+          <button
+            class="w-full sm:w-auto rounded-2xl bg-emerald-600 px-6 py-2 font-semibold text-white shadow-md hover:brightness-95 active:brightness-90">
+            Create
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Fill hour select 00..23 and honor data-prefill
+  (function initHours() {
+    const sel = document.getElementById('hour');
+    if (!sel) return;
+    const pre = sel.getAttribute('data-prefill') || '09';
+    for (let i = 0; i <= 23; i++) {
+      const v = String(i).padStart(2, '0');
+      const opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = v;
+      if (v === pre) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  })();
+
+  // Build ISO start/end for backend before submit
+  function preparePayload(e) {
+    const date = document.getElementById('date')?.value;
+    const hour = document.getElementById('hour')?.value;
+    const minute = document.getElementById('minute')?.value;
+    const duration = parseInt(document.getElementById('duration')?.value || '15', 10);
+
+    if (!date || hour == null || minute == null) return true; // let server validate
+
+    const startField = document.getElementById('start');
+    const endField   = document.getElementById('end');
+
+    // Use local date/time; server will make-aware
+    const startIsoLocal = `${date}T${hour}:${minute}:00`;
+    const start = new Date(startIsoLocal);
+    if (isNaN(start.getTime())) return true;
+
+    const end = new Date(start.getTime() + duration * 60000);
+
+    startField.value = start.toISOString();
+    endField.value = end.toISOString();
+    return true;
+  }
+
+  // Click-to-select for patient results (uses data-patient-id / data-patient-label)
+  (function wirePatientPicker(){
+    const box = document.getElementById('patient-results');
+    if (!box) return;
+    box.addEventListener('click', function(e){
+      const el = e.target.closest('[data-patient-id]');
+      if (!el) return;
+      const id = el.getAttribute('data-patient-id');
+      const label = el.getAttribute('data-patient-label') || el.textContent.trim();
+      const hidden = document.getElementById('patient_id');
+      if (hidden) hidden.value = id;
+      const q = document.querySelector('input[name="patient_query"]');
+      if (q && label) q.value = label;
+      box.innerHTML = '';
+    });
+  })();
+</script>
+{% endblock %}

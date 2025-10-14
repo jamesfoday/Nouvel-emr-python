@@ -1,0 +1,17 @@
+<div class="fixed inset-0 z-50 bg-black/40" onclick="document.getElementById('merge-modal')?.remove()"></div>
+<div id="merge-modal" class="fixed inset-0 z-50 grid place-items-center px-4">
+  <div class="w-full max-w-md rounded-2xl bg-white p-5 shadow">
+    <h2 class="text-lg font-semibold mb-2">Confirm Merge</h2>
+    <p class="text-sm text-gray-600 mb-4">
+      Merge <strong>{{ other.full_name }}</strong> into <strong>{{ primary.full_name }}</strong>?<br>
+      All related appointments, encounters, prescriptions, and documents will be reassigned. The source record will be archived.
+    </p>
+    <form method="post" action="{% url 'patients_ui:merge_execute' %}" class="mt-4 flex gap-3 justify-end">
+      {% csrf_token %}
+      <input type="hidden" name="primary_id" value="{{ primary.pk }}">
+      <input type="hidden" name="other_id"   value="{{ other.pk }}">
+      <button type="button" class="rounded-md px-4 py-2 border" onclick="document.getElementById('merge-modal')?.remove()">Cancel</button>
+      <button class="rounded-md bg-red-600 px-4 py-2 text-white font-semibold">Merge</button>
+    </form>
+  </div>
+</div>

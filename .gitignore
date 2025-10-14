@@ -32,7 +32,7 @@ db.sqlite3
 *.sqlite3
 # collectstatic output (generated at build/deploy)
 staticfiles/
-# user uploads (dev machines only)
+# # user uploads (dev machines only)
 media/
 
 # --- Environment & secrets ---

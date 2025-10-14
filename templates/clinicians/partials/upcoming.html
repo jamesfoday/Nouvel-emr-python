@@ -1,0 +1,70 @@
+{# templates/clinicians/partials/upcoming.html #}
+
+<div id="upcoming-body">
+  {% if appts %}
+    <!-- <div class="flex items-center justify-between gap-3 mb-3">
+      <div class="flex items-center gap-2">
+        <a href="{% url 'clinicians_ui:consultations_all' clinician.pk %}"
+           class="inline-flex items-center rounded-xl bg-gray-200/70 px-3 py-1.5 text-sm font-medium text-gray-800">
+          See all
+        </a>
+        <a href="{% url 'appointments_ui:console_new_appointment' %}?clinician={{ clinician.pk }}"
+           class="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-900">
+          Create <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-white">+</span>
+        </a>
+      </div>
+    </div> -->
+
+    <ul class="space-y-3">
+      {% for a in appts %}
+        {% with p=a.patient %}
+          {% with name=p.get_full_name|default:p|stringformat:"s" %}
+            {% with initial=name|slice:":1"|upper %}
+              <li class="rounded-2xl border border-black/5 bg-white/70 p-2">
+                <div class="flex items-center justify-between gap-3 rounded-xl border border-black/5 bg-white px-3 py-2.5">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full ring-1 ring-black/5 bg-gradient-to-br from-emerald-100 to-emerald-50 text-emerald-900 font-bold">
+                      {% if p and p.avatar %}
+                        <img src="{{ p.avatar.url }}" alt="" class="h-full w-full object-cover" />
+                      {% elif p and p.photo %}
+                        <img src="{{ p.photo.url }}" alt="" class="h-full w-full object-cover" />
+                      {% else %}
+                        {{ initial }}
+                      {% endif %}
+                    </span>
+
+                    <div class="min-w-0">
+                      <div class="truncate text-[15px] font-semibold text-gray-900">
+                        {{ name }}
+                      </div>
+                      <div class="truncate text-sm text-gray-600">
+                        {{ a.start|date:"D, M d" }} · {{ a.start|time:"H:i" }}
+                        {% if a.location %} · {{ a.location }}{% else %} · online{% endif %}
+                      </div>
+                    </div>
+                  </div>
+
+                  {# Cancel button — same rules as list page #}
+                  {% if a.start and a.start >= now and a.status|default_if_none:""|lower not in "cancelled,canceled" %}
+                    <form method="post"
+                          hx-post="{% url 'clinicians_ui:cancel_appt' clinician.pk a.pk %}"
+                          hx-target="#upcoming-body"
+                          hx-swap="outerHTML">
+                      {% csrf_token %}
+                      <button type="submit"
+                              class="inline-flex items-center gap-2 rounded-xl bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow hover:brightness-95 active:brightness-90">
+                        Cancel
+                      </button>
+                    </form>
+                  {% endif %}
+                </div>
+              </li>
+            {% endwith %}
+          {% endwith %}
+        {% endwith %}
+      {% endfor %}
+    </ul>
+  {% else %}
+    {# No appointments in the next 48 hours — render nothing (no empty state) #}
+  {% endif %}
+</div>

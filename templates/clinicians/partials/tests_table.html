@@ -1,0 +1,67 @@
+{# expects: docs, total (may be None on first paint), limit, offset, next_offset, prev_offset, filters, clinician #}
+
+<div class="overflow-x-auto -mx-2 sm:mx-0" style="-webkit-overflow-scrolling:touch">
+  <table class="min-w-full text-sm">
+    <thead>
+      <tr class="text-left text-gray-500">
+        <th class="px-4 py-2">Title</th>
+        <th class="px-4 py-2 hidden sm:table-cell">Patient</th>
+        <th class="px-4 py-2 hidden md:table-cell">Kind</th>
+        <th class="px-4 py-2">Created</th>
+        <th class="px-4 py-2">Action</th>
+      </tr>
+    </thead>
+    <tbody class="align-top">
+      {% for d in docs %}
+        <tr class="border-b">
+          <td class="px-4 py-3">
+            <div class="font-medium text-gray-900">{{ d.title|default:"Test result" }}</div>
+            <div class="text-xs text-gray-400 break-all">{{ d.filename|default:"" }}</div>
+          </td>
+          <td class="px-4 py-3 hidden sm:table-cell">
+            {% if d.patient %}
+              {{ d.patient.family_name }}, {{ d.patient.given_name }}
+            {% else %}—{% endif %}
+          </td>
+          <td class="px-4 py-3 hidden md:table-cell">{{ d.kind|default:"—" }}</td>
+          <td class="px-4 py-3">{{ d.created_at|date:"Y-m-d H:i" }}</td>
+          <td class="px-4 py-3">
+            <a class="text-emerald-700 hover:underline"
+               href="{% url 'documents_ui:list' clinician.pk %}?q={{ d.title|urlencode }}">View</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td class="px-4 py-8 text-center text-gray-400" colspan="5">No tests match your filters.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# Pager #}
+{% if total %}
+  <div class="mt-4 flex items-center justify-between text-sm text-gray-600">
+    <div>
+      Showing {{ offset|add:1 }}–{{ offset|add:docs|length }} of {{ total }}
+    </div>
+    <div class="flex gap-2">
+      {% if prev_offset is not None %}
+        <button
+          class="rounded-md border px-3 py-1 hover:bg-gray-50"
+          hx-get="{% url 'clinicians_ui:tests_table' clinician.pk %}?q={{ q|urlencode }}&kind={{ kind }}&patient={{ patient|urlencode }}&date_from={{ date_from }}&date_to={{ date_to }}&limit={{ limit }}&offset={{ prev_offset }}"
+          hx-target="#tests-table"
+          hx-swap="outerHTML"
+        >Prev</button>
+      {% endif %}
+      {% if next_offset is not None %}
+        <button
+          class="rounded-md border px-3 py-1 hover:bg-gray-50"
+          hx-get="{% url 'clinicians_ui:tests_table' clinician.pk %}?q={{ q|urlencode }}&kind={{ kind }}&patient={{ patient|urlencode }}&date_from={{ date_from }}&date_to={{ date_to }}&limit={{ limit }}&offset={{ next_offset }}"
+          hx-target="#tests-table"
+          hx-swap="outerHTML"
+        >Next</button>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}

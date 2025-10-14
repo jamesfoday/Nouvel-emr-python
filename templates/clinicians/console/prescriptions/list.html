@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mx-auto mt-6 w-full max-w-7xl px-3 sm:px-6">
+  <div class="rounded-2xl bg-[#EAF5ED] p-1">
+    <div class="rounded-2xl bg-white p-4 sm:p-6 shadow">
+      <div class="mb-4 flex items-center justify-between">
+        <a href="{% url 'prescriptions_ui:create' clinician.pk %}"
+           class="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-800">
+          Create <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-white">+</span>
+        </a>
+        <h1 class="text-lg sm:text-xl font-semibold text-gray-700">Prescription</h1>
+        <div class="w-28"></div>
+      </div>
+
+      <div class="rounded-2xl bg-[#F4FAF5] min-h-[320px] sm:min-h-[420px] p-4 sm:p-6">
+        <div class="divide-y">
+          {% for rx in prescriptions %}
+            <div class="flex items-center gap-3 px-4 py-3">
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold text-gray-700 truncate">{{ rx.title }}</div>
+                <div class="text-sm text-gray-500 truncate">
+                  {{ rx.patient.full_name }} · {{ rx.created_at|date:"d M Y, H:i" }}
+                </div>
+              </div>
+              <div class="flex items-center gap-4 text-gray-600">
+                <!-- Edit -->
+                <a href="{% url 'prescriptions_ui:view' clinician.pk rx.pk %}" class="flex flex-col items-center text-xs">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M4 20h4l10.5-10.5a2.121 2.121 0 10-3-3L5 17v3z"/></svg>
+                  Edit
+                </a>
+                <!-- View -->
+                <a href="{% url 'prescriptions_ui:view' clinician.pk rx.pk %}" class="flex flex-col items-center text-xs">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 110-10 5 5 0 010 10z"/></svg>
+                  View
+                </a>
+                <!-- Share (placeholder) -->
+                <span class="flex flex-col items-center text-xs opacity-60 cursor-not-allowed" title="Coming soon">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M15 8a3 3 0 10-2.83-4H12a3 3 0 102.83 4zM6 14a3 3 0 10-2.83 4H3a3 3 0 102.83-4zM18 14a3 3 0 10-2.83 4H15a3 3 0 102.83-4z"/><path d="M8 13l8-5M8 11l8 5"/></svg>
+                  Share
+                </span>
+                <!-- Download (placeholder) -->
+                <span class="flex flex-col items-center text-xs opacity-60 cursor-not-allowed" title="Coming soon">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17h16v4H4z"/></svg>
+                  download
+                </span>
+                <!-- Delete -->
+                <form method="post" action="{% url 'prescriptions_ui:delete' clinician.pk rx.pk %}" onsubmit="return confirm('Delete this prescription?')">
+                  {% csrf_token %}
+                  <button class="flex flex-col items-center text-xs text-red-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 7h12v13a2 2 0 01-2 2H8a2 2 0 01-2-2V7zm3-4h6l1 1h4v2H4V4h4l1-1z"/></svg>
+                    delete
+                  </button>
+                </form>
+              </div>
+            </div>
+          {% empty %}
+            <div class="px-4 py-14 sm:py-20 text-center text-gray-500">No prescriptions yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="mt-8">
+        <a href="{% url 'clinicians_ui:dashboard' clinician.pk %}" class="inline-flex items-center gap-2 text-gray-700">
+          <span class="grid h-8 w-8 place-items-center rounded-full bg-gray-100">&lsaquo;</span> Back
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

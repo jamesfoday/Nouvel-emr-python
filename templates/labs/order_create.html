@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-3xl mx-auto mt-6">
+  <div class="rounded-2xl bg-[#EAF5ED] p-1">
+    <div class="rounded-2xl bg-white p-6 shadow">
+      <h1 class="text-xl font-semibold mb-4">Order a Test</h1>
+
+      <form method="post">
+        {% csrf_token %}
+
+        <!-- Patient picker -->
+        <label class="block font-medium mb-1">Patient</label>
+        <div class="relative mb-3">
+          <input
+            type="text"
+            name="patient_query"
+            placeholder="Search patient"
+            class="w-full rounded-full border px-4 py-2 pr-10"
+            hx-get="{% url 'patients_ui:pick_list' %}"
+            hx-target="#patient-results"
+            hx-trigger="input changed delay:300ms"
+            autocomplete="off"
+          >
+          <input type="hidden" name="patient_id" id="patient_id">
+          <svg class="pointer-events-none absolute right-3 top-2.5 h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none">
+            <path d="M21 21l-4.3-4.3m1.3-5.2a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </div>
+        <div id="patient-results" class="mb-4"></div>
+
+        <!-- Catalog -->
+        <label class="block font-medium mb-1">Test</label>
+        <select name="catalog_id" class="w-full rounded-md border px-3 py-2 mb-3">
+          <option value="">Select a test…</option>
+          {% for c in catalogs %}
+            <option value="{{ c.id }}">{{ c.code }} — {{ c.name }}</option>
+          {% endfor %}
+        </select>
+
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium mb-1">Priority</label>
+            <select name="priority" class="w-full rounded-md border px-3 py-2">
+              <option value="routine">Routine</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium mb-1">Reason (optional)</label>
+            <input type="text" name="reason" class="w-full rounded-md border px-3 py-2">
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <label class="block font-medium mb-1">Notes (optional)</label>
+          <textarea name="notes" rows="3" class="w-full rounded-md border px-3 py-2"></textarea>
+        </div>
+
+        <div class="mt-6 flex items-center justify-end gap-3">
+          <a href="{% url 'clinicians_ui:tests_index' clinician.pk %}" class="rounded-md border px-4 py-2">Cancel</a>
+          <button class="rounded-md bg-emerald-600 px-4 py-2 text-white">Create Order</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Called by the pick list
+  function selectPatient(id, label){
+    document.getElementById('patient_id').value = id;
+    const input = document.querySelector('input[name="patient_query"]');
+    if (input) input.value = label;
+  }
+
+  // Event delegation for the HTMX-rendered pick list (no inline JS needed)
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('button.pick-patient');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const label = btn.dataset.label || '';
+    if (window.selectPatient) window.selectPatient(id, label);
+    const box = document.getElementById('patient-results');
+    if (box) box.innerHTML = '';
+  });
+</script>
+{% endblock %}

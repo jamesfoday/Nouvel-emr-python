@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto mt-6">
+  <div class="rounded-2xl bg-[#EAF5ED] p-1">
+    <div class="rounded-2xl bg-white p-6 shadow">
+      <div class="flex items-center justify-between gap-4 mb-4">
+        <h1 class="text-xl font-semibold">Tests</h1>
+        <a href="{% url 'labs_ui:order_create' clinician.pk %}" 
+           class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:opacity-90">
+          Create
+          <span class="grid h-5 w-5 place-items-center rounded-full bg-white/20 text-white">+</span>
+        </a>
+      </div>
+
+      <!-- Filters -->
+      <form
+        id="tests-filter"
+        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4"
+        hx-get="{% url 'clinicians_ui:tests_table' clinician.pk %}"
+        hx-target="#tests-table"
+        hx-swap="outerHTML"
+      >
+        <input type="search" name="q" placeholder="Search title, file, patient, email, phone"
+               class="w-full rounded-full border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400">
+
+        <select name="kind" class="w-full rounded-full border px-4 py-2 text-sm">
+          <option value="all">All kinds</option>
+          <option value="lab_result">Lab result</option>
+          <option value="test_result">Test result</option>
+        </select>
+
+        <input type="text" name="patient" placeholder="Patient (name/email/phone)"
+               class="w-full rounded-full border border-gray-300 px-4 py-2 text-sm">
+
+        <input type="date" name="date_from" class="w-full rounded-full border px-4 py-2 text-sm">
+        <input type="date" name="date_to"   class="w-full rounded-full border px-4 py-2 text-sm">
+
+        <!-- keep a default page size -->
+        <input type="hidden" name="limit" value="25">
+      </form>
+
+      <!-- Table region (hydrated by HTMX; we server-render initial set too) -->
+      <div id="tests-table">
+        {% include "clinicians/partials/tests_table.html" with docs=initial_docs total=None limit=25 offset=0 clinician=clinician %}
+      </div>
+
+      <div class="mt-6">
+        <a href="{% url 'clinicians_ui:dashboard' clinician.pk %}" class="text-sm text-gray-600 hover:underline">← Back to dashboard</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
