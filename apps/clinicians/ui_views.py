@@ -25,6 +25,9 @@ from django.views.decorators.http import require_http_methods
 from apps.appointments.models import Availability
 from apps.appointments.services import suggest_free_slots
 
+from django.shortcuts import get_object_or_404, redirect
+
+
 # ----------------------------- helpers ------------------------------------- #
 
 def _to_int(value, default: int, *, min_value: int = 1, max_value: int | None = 100) -> int:
@@ -872,3 +875,82 @@ def availability_delete(request, pk, avail_id):
         return resp
 
     return redirect("clinicians_ui:availability_index", pk=pk)
+
+def _pick_confirmed_status():
+    """
+    Choose a valid non-null 'confirmed' status based on the model's choices.
+    Prefers 'scheduled' → 'confirmed' → 'approved' (case-insensitive).
+    Falls back to the first non-cancel/request choice.
+    """
+    try:
+        fld = Appointment._meta.get_field("status")
+    except Exception:
+        return "scheduled"
+
+    choices = [v for v, _ in getattr(fld, "choices", [])] or []
+    if not choices:
+        return "scheduled"
+
+    norm = {str(v).lower(): v for v in choices}
+    for key in ("scheduled", "confirmed", "approved"):
+        if key in norm:
+            return norm[key]
+
+   
+    for v in choices:
+        lv = str(v).lower()
+        if all(t not in lv for t in ("request", "pending", "cancel")):
+            return v
+
+    
+    return choices[0]
+
+
+def _pick_cancelled_status():
+    """Choose a valid 'cancelled' value respecting choices if present."""
+    try:
+        fld = Appointment._meta.get_field("status")
+    except Exception:
+        return "cancelled"
+
+    choices = [v for v, _ in getattr(fld, "choices", [])] or []
+    if not choices:
+        return "cancelled"
+
+    norm = {str(v).lower(): v for v in choices}
+    for key in ("cancelled", "canceled"):
+        if key in norm:
+            return norm[key]
+    return choices[-1]  
+
+
+@login_required
+@require_POST
+def approve_request(request, pk, appt_id):
+    """Clinician approves a 'requested' appointment -> set to a valid confirmed status."""
+    clinician = get_object_or_404(User, pk=pk, is_staff=True)
+    appt = get_object_or_404(Appointment, pk=appt_id, clinician=clinician)
+
+    confirmed = _pick_confirmed_status()
+    appt.status = confirmed
+    appt.save(update_fields=["status"])
+
+    back = reverse("clinicians_ui:consultations_all", args=[clinician.pk])
+    qs = request.GET.urlencode()
+    return redirect(f"{back}?{qs}" if qs else back)
+
+
+@login_required
+@require_POST
+def decline_request(request, pk, appt_id):
+    """Clinician declines a 'requested' appointment -> set to a valid cancelled status."""
+    clinician = get_object_or_404(User, pk=pk, is_staff=True)
+    appt = get_object_or_404(Appointment, pk=appt_id, clinician=clinician)
+
+    cancelled = _pick_cancelled_status()
+    appt.status = cancelled
+    appt.save(update_fields=["status"])
+
+    back = reverse("clinicians_ui:consultations_all", args=[clinician.pk])
+    qs = request.GET.urlencode()
+    return redirect(f"{back}?{qs}" if qs else back)

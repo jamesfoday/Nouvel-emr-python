@@ -12,6 +12,17 @@ from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template import loader, TemplateDoesNotExist
 from django.utils import timezone
+from datetime import timedelta
+from django.http import HttpResponseBadRequest
+from django.shortcuts import get_object_or_404, render, redirect
+from django.urls import reverse
+from django.views.decorators.http import require_http_methods, require_POST
+from apps.appointments.models import Appointment, Availability
+from apps.appointments.services import suggest_free_slots
+from apps.patients.models import Patient
+from datetime import datetime
+from apps.appointments.models import Appointment
+
 
 # --- guarded imports, project may toggle apps on/off in dev ---
 try:
@@ -40,6 +51,35 @@ else:
 User = get_user_model()
 
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+
+from typing import Optional, TYPE_CHECKING
+if TYPE_CHECKING:
+    from apps.patients.models import Patient as PatientT
+
+def _current_patient_for_user(user) -> Optional["PatientT"]:
+    """
+    Best-effort way to map a portal user -> Patient.
+    Adjust to your project’s relationship if needed.
+    """
+   
+    if hasattr(user, "patient") and isinstance(getattr(user, "patient"), Patient):
+        return user.patient
+
+   
+    prof = getattr(user, "profile", None)
+    if prof and hasattr(prof, "patient") and isinstance(prof.patient, Patient):
+        return prof.patient
+
+    
+    email = (user.email or "").strip().lower()
+    if email:
+        try:
+            return Patient.objects.get(email__iexact=email)
+        except Patient.DoesNotExist:
+            pass
+
+    return None
 
 
 # ============================================================================
@@ -520,3 +560,152 @@ def appts_list(request: HttpRequest):
             "page_size": page_size_i,
         },
     )
+
+
+    
+
+
+@login_required
+@require_http_methods(["GET"])
+def book_appt_page(request):
+    """
+    Renders the booking page with filters and a Find Slots button.
+    """
+    clinicians = (
+        User.objects.filter(is_staff=True, is_active=True)
+        .order_by("last_name", "first_name", "id")
+    )
+
+    # Defaults
+    now = timezone.localtime()
+    date_from = now
+    date_to = now + timedelta(days=7)
+    duration = 30
+
+    clinician_id = request.GET.get("clinician")
+    try:
+        clinician_id = int(clinician_id) if clinician_id else None
+    except ValueError:
+        clinician_id = None
+
+    ctx = {
+        "clinicians": clinicians,
+        "clinician_id": clinician_id,
+        "date_from": date_from,
+        "date_to": date_to,
+        "duration": duration,
+    }
+    return render(request, "portal/consultations/book.html", ctx)
+
+
+@login_required
+@require_http_methods(["GET"])
+def book_appt_slots(request):
+    """
+    HTMX endpoint: returns a grid of available slots for the chosen clinician & window.
+    """
+    clinician_id = request.GET.get("clinician_id")
+    date_from = request.GET.get("date_from")
+    date_to = request.GET.get("date_to")
+    duration = int(request.GET.get("duration") or 30)
+
+    if not clinician_id:
+        return HttpResponseBadRequest("Missing clinician_id")
+
+    # Parse ISO local datetime values from the datetime-local inputs
+    def _parse_local(dt_str: str):
+        # Expect e.g. "2025-10-14T09:30"
+        return timezone.make_aware(timezone.datetime.fromisoformat(dt_str)) if dt_str else None
+
+    df = _parse_local(date_from)
+    dt = _parse_local(date_to)
+
+    if not df:
+        df = timezone.localtime()
+    if not dt:
+        dt = df + timedelta(days=7)
+
+    # Call your availability service
+    slots = suggest_free_slots(
+        clinician_id=int(clinician_id),
+        date_from=df,
+        date_to=dt,
+        duration_minutes=duration,
+        step_minutes=None,
+        patient_id=None,  # if you want to bias results by patient constraints, pass id here
+        limit=40,
+    )
+
+    return render(
+        request,
+        "portal/consultations/_slots.html",
+        {"slots": slots, "duration": duration},
+    )
+
+
+@login_required
+@require_POST
+def book_appt_create(request):
+    """
+    Creates an Appointment in 'requested' state from a selected slot.
+    Redirects the patient to their consultations list.
+    """
+    patient = _current_patient_for_user(request.user)
+    if not patient:
+        return HttpResponseBadRequest("No patient profile linked to your account.")
+
+    clinician_id = request.POST.get("clinician_id")
+    start_iso = (request.POST.get("start_iso") or "").strip()
+    duration = int(request.POST.get("duration") or 30)
+
+    if not clinician_id or not start_iso:
+        return HttpResponseBadRequest("Missing fields")
+
+    clinician = get_object_or_404(User, pk=int(clinician_id), is_staff=True, is_active=True)
+
+
+    try:
+        dt = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
+    except ValueError:
+        return HttpResponseBadRequest("Invalid start time")
+
+    if dt.tzinfo is None:
+        start = timezone.make_aware(dt)
+    else:
+        start = dt.astimezone(timezone.get_current_timezone())
+
+    
+    model_fields = {f.name for f in Appointment._meta.get_fields()
+                    if getattr(f, "concrete", False) and not getattr(f, "many_to_many", False)}
+
+    appt_kwargs = {
+        "clinician": clinician,
+        "patient": patient,
+        "start": start,
+    }
+
+    if "duration_minutes" in model_fields:
+        appt_kwargs["duration_minutes"] = duration
+    elif "duration" in model_fields:
+        appt_kwargs["duration"] = duration
+    elif "end" in model_fields:
+        appt_kwargs["end"] = start + timedelta(minutes=duration)
+  
+
+    appt = Appointment(**appt_kwargs)
+
+    if "status" in model_fields:
+        appt.status = "requested"
+
+    appt.save()
+
+    try:
+        from apps.appointments.tasks import send_appointment_email
+        send_appointment_email.delay(appt.id, "requested")
+    except Exception:
+        pass
+
+    try:
+        return redirect("portal_ui:appts_list")
+    except Exception:
+        return redirect("portal_ui:home")

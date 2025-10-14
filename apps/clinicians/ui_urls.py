@@ -43,7 +43,9 @@ urlpatterns = [
     path("clinicians/<int:pk>/availability/new/",              v.availability_new,            name="availability_new"),
     path("clinicians/<int:pk>/availability/<int:avail_id>/",   v.availability_edit,           name="availability_edit"),
     path("clinicians/<int:pk>/availability/<int:avail_id>/delete/", v.availability_delete,   name="availability_delete"),
-    
+    path("clinicians/<int:pk>/requests/approve/<int:appt_id>/", v.approve_request, name="approve_request"),
+    path("clinicians/<int:pk>/requests/decline/<int:appt_id>/", v.decline_request, name="decline_request"),
+
    
 
 ]

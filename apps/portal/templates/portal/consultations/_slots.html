@@ -1,0 +1,22 @@
+{% if slots %}
+  <div class="rounded-3xl border border-white/30 bg-white/60 p-4 backdrop-blur">
+    <h2 class="text-lg font-semibold text-gray-900 mb-3">Available slots</h2>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+      {% for s in slots %}
+        <form method="post" action="{% url 'portal_ui:book_appt_create' %}" class="contents">
+          {% csrf_token %}
+          <input type="hidden" name="clinician_id" value="{{ s.clinician }}">
+          <input type="hidden" name="start_iso" value="{{ s.start|date:'c' }}">
+          <input type="hidden" name="duration" value="{{ duration }}">
+          <button class="rounded-xl border border-black/5 bg-white px-3 py-2 text-sm hover:bg-emerald-50">
+            {{ s.start|date:"D, M j" }} · {{ s.start|time:"H:i" }}
+          </button>
+        </form>
+      {% endfor %}
+    </div>
+  </div>
+{% else %}
+  <div class="rounded-2xl border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-600">
+    No available slots in that range.
+  </div>
+{% endif %}

@@ -30,6 +30,10 @@ urlpatterns = [
     path("as/stop/", v.dashboard_stop_impersonate, name="dashboard_stop_impersonate"),
     path("appts/", v.appts_list, name="appts_list"),
 
+    path("consultations/book/", pv.book_appt_page, name="book_appt"),
+    path("consultations/book/slots/", pv.book_appt_slots, name="book_appt_slots"),
+    path("consultations/book/create/", pv.book_appt_create, name="book_appt_create"),
+
     
     
     
