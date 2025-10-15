@@ -33,8 +33,16 @@ urlpatterns = [
     path("consultations/book/", pv.book_appt_page, name="book_appt"),
     path("consultations/book/slots/", pv.book_appt_slots, name="book_appt_slots"),
     path("consultations/book/create/", pv.book_appt_create, name="book_appt_create"),
+     # --- Calendar booking (week grid) ---
+    path("consultations/book/calendar/", pv.book_appt_calendar, name="book_appt_calendar"),
+    path("consultations/book/slots-grid/", pv.book_appt_slots_grid, name="book_appt_slots_grid"),
 
-    
-    
-    
+    path("prescriptions/", pv.portal_rx_list, name="rx_list"),
+    path("prescriptions/<int:rx_id>/", pv.portal_rx_detail, name="rx_detail"),
+    path("prescriptions/<int:rx_id>/download/", pv.portal_rx_download, name="rx_download"),
+
+    path("documents/", pv.docs_list, name="docs_list"),
+    path("documents/<int:doc_id>/", pv.doc_detail, name="doc_detail"),
+    path("documents/<int:doc_id>/download/", pv.docs_download, name="docs_download"),
+    path("documents/<int:doc_id>/modal/", pv.docs_view_modal, name="docs_view_modal"),
 ]

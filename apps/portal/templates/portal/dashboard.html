@@ -70,13 +70,14 @@
             </svg>
           </div>
 
-         <a href="{% url 'portal_ui:book_appt' %}"
-   class="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-  Book
-  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M12 5v14m-7-7h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-  </svg>
-</a>
+          <a href="{% url 'portal_ui:book_appt_calendar' %}"
+          class="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+          Book
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 5v14m-7-7h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </a>
+
 
 
            <a href="{% url 'portal_ui:appts_list' %}"
@@ -137,7 +138,7 @@
     {# Desktop quick actions (optional) #}
     <div class="bg-white rounded-2xl p-4 ring-1 ring-black/5 space-y-4 hidden md:block">
       <div class="grid grid-cols-2 gap-4">
-        <a href="#p-appts" class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
+        <a href="{% url 'portal_ui:appts_list' %}" class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
           <div class="shortcut-circle relative">
             <img src="{% static 'img/shortcuts/appointments.svg' %}" alt="Appointments" class="w-8 h-8"
                  onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
@@ -155,23 +156,27 @@
           <div class="text-base font-semibold">Tests</div>
         </a>
 
-        <a href="#p-msgs" class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
-          <div class="shortcut-circle relative">
-            <img src="{% static 'img/shortcuts/prescription.svg' %}" alt="Prescription" class="w-8 h-8"
-                 onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
-            <span class="hidden absolute inset-0 place-items-center text-2xl">💬</span>
-          </div>
-          <div class="text-base font-semibold">Prescription</div>
-        </a>
+      <a href="{% url 'portal_ui:rx_list' %}"
+      class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
+      <div class="shortcut-circle relative">
+        <img src="{% static 'img/shortcuts/prescription.svg' %}" alt="Prescription" class="w-8 h-8"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
+        <span class="hidden absolute inset-0 place-items-center text-2xl">💬</span>
+      </div>
+      <div class="text-base font-semibold">Prescription</div>
+    </a>
 
-        <a href="#p-msgs" class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
-          <div class="shortcut-circle relative">
-            <img src="{% static 'img/shortcuts/messages.svg' %}" alt="Messages" class="w-8 h-8"
-                 onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
-            <span class="hidden absolute inset-0 place-items-center text-2xl">💬</span>
-          </div>
-          <div class="text-base font-semibold">Messages</div>
-        </a>
+
+     <a href="{% url 'portal_ui:docs_list' %}"
+   class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 cursor-pointer">
+  <div class="shortcut-circle relative">
+    <img src="{% static 'img/shortcuts/messages.svg' %}" alt="Documents" class="w-8 h-8"
+         onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
+    <span class="hidden absolute inset-0 place-items-center text-2xl">📄</span>
+  </div>
+  <div class="text-base font-semibold">Documents</div>
+</a>
+
       </div>
     </div>
 

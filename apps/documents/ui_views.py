@@ -4,9 +4,12 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponseBadRequest
 from django.utils import timezone
-
+from .models import Document 
+from django.template import loader
+from django.views.decorators.http import require_http_methods, require_POST
 from apps.accounts.models import User
 from apps.patients.models import Patient
+from django.http import HttpResponseBadRequest, HttpResponse
 
 try:
     from apps.documents.models import Document  # your existing model
@@ -84,3 +87,62 @@ def view_document(request, pk, doc_id):
     _assert_can_view(request, clinician)
     doc = get_object_or_404(Document, pk=doc_id, clinician=clinician)
     return render(request, "clinicians/console/documents/view.html", {"clinician": clinician, "doc": doc})
+
+
+@login_required
+@require_http_methods(["GET"])
+def doc_view_modal(request, pk, doc_id):
+    clinician = get_object_or_404(User, pk=pk, is_staff=True)
+    _assert_can_view(request, clinician)
+    d = get_object_or_404(Document, pk=doc_id, clinician=clinician)
+
+    html = loader.render_to_string(
+        "clinicians/console/documents/_modal_view.html",
+        {"doc": d, "clinician": clinician},
+        request,
+    )
+    return HttpResponse(html)
+
+@login_required
+@require_http_methods(["GET"])
+def doc_edit_modal(request, pk, doc_id):
+    clinician = get_object_or_404(User, pk=pk, is_staff=True)
+    _assert_can_view(request, clinician)
+    d = get_object_or_404(Document, pk=doc_id, clinician=clinician)
+
+    html = loader.render_to_string(
+        "clinicians/console/documents/_modal_edit.html",
+        {"doc": d, "clinician": clinician},
+        request,
+    )
+    return HttpResponse(html)
+
+@login_required
+@require_POST
+def doc_update(request, pk, doc_id):
+    clinician = get_object_or_404(User, pk=pk, is_staff=True)
+    _assert_can_view(request, clinician)
+    d = get_object_or_404(Document, pk=doc_id, clinician=clinician)
+
+    # Minimal editable fields (adjust to your model)
+    title = request.POST.get("title", "").strip()
+    notes = request.POST.get("notes", "").strip()
+
+    changed = False
+    if hasattr(d, "title"):
+        d.title = title
+        changed = True
+    if hasattr(d, "notes"):
+        d.notes = notes
+        changed = True
+    if changed:
+        d.updated_at = timezone.now() if hasattr(d, "updated_at") else d.updated_at
+        d.save()
+
+    # Return the updated view modal so the user sees changes immediately
+    html = loader.render_to_string(
+        "clinicians/console/documents/_modal_view.html",
+        {"doc": d, "clinician": clinician},
+        request,
+    )
+    return HttpResponse(html)

@@ -1,0 +1,57 @@
+{% load portal_extras %}
+
+
+
+{% if not days or not hours %}
+  <div class="rounded-xl border border-white/30 bg-white/60 px-3 py-2 text-sm text-gray-600">
+    Select a clinician and week to load availability.
+  </div>
+{% else %}
+  <div class="overflow-x-auto rounded-2xl border border-white/30 bg-white/60">
+    <table class="min-w-full text-sm">
+      <thead>
+        <tr>
+          <th class="w-20 p-2 text-left text-gray-500"></th>
+          {% for d in days %}
+            <th class="p-2 text-left font-semibold text-gray-800">
+              {{ d|date:"D" }} {{ d|date:"m/d" }}
+            </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in hours %}
+          <tr class="border-t border-dashed border-gray-200/70">
+            <td class="align-top p-2 text-gray-500">{{ h }}:00</td>
+
+            {% for d in days %}
+              <td class="align-top p-1">
+                {% with slots=slots_by_day.d %}
+                {% endwith %}
+                {# Render any slots that start within this hour for this day #}
+                {% if slots_by_day.d %}
+                  {# d is a date; we can't dot-index with a variable, so loop filter #}
+                {% endif %}
+                {% for s in slots_by_day|get_item:d %}
+                  {% if s.hour == h %}
+                    <form method="post" action="{% url 'portal_ui:book_appt_create' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="clinician_id" value="{{ clinician_id }}">
+                      <input type="hidden" name="start_iso" value="{{ s|date:'c' }}">
+                      <input type="hidden" name="duration" value="{{ duration }}">
+                      <button class="w-full text-left rounded-lg border border-emerald-600/60 bg-emerald-50 px-2 py-1 hover:bg-emerald-100">
+                        {{ s|time:"H:i" }}
+                      </button>
+                    </form>
+                  {% endif %}
+                {% empty %}
+                  {# no slots for this day #}
+                {% endfor %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}

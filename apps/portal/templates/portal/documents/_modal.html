@@ -1,0 +1,57 @@
+{# portal/documents/_modal.html #}
+<div class="fixed inset-0 z-[60]">
+  <!-- overlay -->
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm cursor-pointer"
+       onclick="document.getElementById('doc-modal').innerHTML='';"></div>
+
+  <!-- dialog -->
+  <div class="absolute inset-0 grid place-items-center p-4">
+    <article class="w-full max-w-3xl rounded-3xl bg-white shadow-2xl ring-1 ring-black/10 overflow-hidden">
+      <header class="flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-100">
+        <h3 class="text-base sm:text-lg font-semibold text-gray-900 truncate">
+          {{ title }}
+        </h3>
+        <div class="flex items-center gap-2">
+          <a href="{{ download_url }}"
+             class="inline-flex items-center gap-2 rounded-full bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white shadow hover:brightness-95 active:brightness-90">
+            Download
+          </a>
+          <button type="button"
+                  class="inline-flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 w-8 h-8"
+                  onclick="document.getElementById('doc-modal').innerHTML='';"
+                  aria-label="Close">
+            ✕
+          </button>
+        </div>
+      </header>
+
+      <div class="p-5">
+        {% if is_pdf %}
+          <object data="{{ file_url }}" type="application/pdf" class="w-full h-[70vh] rounded-xl border border-gray-200">
+            <p class="text-sm text-gray-600">Preview not supported. Please use the Download button.</p>
+          </object>
+        {% elif is_image %}
+          <img src="{{ file_url }}" alt="" class="max-h-[70vh] w-full object-contain rounded-xl border border-gray-200"/>
+        {% else %}
+          <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+            Preview not available for this file type. Use the Download button above.
+          </div>
+        {% endif %}
+      </div>
+    </article>
+  </div>
+</div>
+
+<script>
+  // Close on Escape
+  (function () {
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        const mount = document.getElementById('doc-modal');
+        if (mount) mount.innerHTML = '';
+        document.removeEventListener('keydown', onKey);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+  })();
+</script>

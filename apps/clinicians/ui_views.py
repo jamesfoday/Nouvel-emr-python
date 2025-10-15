@@ -27,8 +27,30 @@ from apps.appointments.services import suggest_free_slots
 
 from django.shortcuts import get_object_or_404, redirect
 
+import io  
+from django.http import FileResponse, JsonResponse  
+
+
+from reportlab.lib.pagesizes import A4  
+from reportlab.lib import colors         
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle  
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle  
+
+from apps.prescriptions.models import Prescription
+from django.conf import settings
+from django.template.loader import render_to_string
+from django.template.loader import select_template
+from django.contrib.staticfiles.storage import staticfiles_storage
+from django.contrib.staticfiles import finders
+
+
+
+
 
 # ----------------------------- helpers ------------------------------------- #
+
+
+
 
 def _to_int(value, default: int, *, min_value: int = 1, max_value: int | None = 100) -> int:
     """Parse integers from query params safely."""
@@ -75,6 +97,9 @@ def _derive_status(appt: Appointment, now):
             return "attended"
     return "attended" if getattr(appt, "start", None) and appt.start < now else "upcoming"
 
+
+def _get_rx_for_clinician_or_404(clinician_id: int, rx_id: int) -> Prescription:
+    return get_object_or_404(Prescription, pk=rx_id, clinician_id=clinician_id)
 
 # ----------------------------- Tests (See all) ------------------------------ #
 
@@ -954,3 +979,366 @@ def decline_request(request, pk, appt_id):
     back = reverse("clinicians_ui:consultations_all", args=[clinician.pk])
     qs = request.GET.urlencode()
     return redirect(f"{back}?{qs}" if qs else back)
+
+
+def _rx_qs_for_clinician(clinician):
+    """Return a safe queryset for prescriptions belonging to this clinician."""
+    try:
+        from apps.prescriptions.models import Prescription
+    except Exception:
+        return []
+    try:
+        return (Prescription.objects
+                .filter(clinician=clinician)
+                .select_related("patient")
+                .order_by("-created_at"))
+    except Exception:
+        return []
+
+@login_required
+def rx_list(request, pk):
+    """Full list page (reuses your template) with the new modal/view wiring."""
+    clinician = get_object_or_404(User, pk=pk, is_staff=True)
+    _assert_can_view(request, clinician)
+    prescriptions = list(_rx_qs_for_clinician(clinician)[:200])
+    return render(
+        request,
+        "clinicians/prescriptions/list.html",
+        {"clinician": clinician, "prescriptions": prescriptions},
+    )
+
+@login_required
+@require_http_methods(["GET"])
+def rx_view_modal(request, pk: int, rx_id: int):
+    clinician = get_object_or_404(User, pk=pk, is_staff=True, is_active=True)
+    rx = _get_rx_for_clinician_or_404(pk, rx_id)
+
+    html = loader.render_to_string(
+        "clinicians/console/prescriptions/_view_modal.html",   # <-- fixed path
+        {"clinician": clinician, "rx": rx},
+        request,
+    )
+    return HttpResponse(html)
+
+@login_required
+def rx_download(request, pk: int, rx_id: int):
+    """
+    Clinician-side PDF download for a prescription.
+    1) Try ReportLab (pure Python, no native deps) -> PDF
+    2) Fallback to WeasyPrint (if installed) -> PDF
+    3) Final fallback -> .txt
+    """
+    # Ensure clinician exists and caller can view
+    clinician = get_object_or_404(User, pk=pk, is_staff=True, is_active=True)
+    _assert_can_view(request, clinician)
+
+    # Get Prescription for this clinician
+    try:
+        from apps.prescriptions.models import Prescription
+    except Exception:
+        return HttpResponseBadRequest("Prescriptions module not installed.")
+    rx = get_object_or_404(Prescription, pk=rx_id, clinician=clinician)
+
+    # Normalize fields
+    title = getattr(rx, "title", "") or f"Prescription {rx.id}"
+    body  = getattr(rx, "body", None)
+    if body is None:
+        body = getattr(rx, "text", "")  # soft fallback
+
+    patient = getattr(rx, "patient", None)
+    patient_name = (
+        getattr(patient, "get_full_name", lambda: "")()
+        or getattr(patient, "full_name", "")
+        or f"{getattr(patient, 'given_name', '')} {getattr(patient, 'family_name', '')}".strip()
+        or (str(patient) if patient else "")
+    )
+
+    created = getattr(rx, "created_at", None) or timezone.now()
+    clinician_name = clinician.get_full_name() or clinician.username or "Clinician"
+    filename = "".join(c for c in title if c.isalnum() or c in (" ", "-", "_")).strip() or f"prescription-{rx.id}"
+
+    # ---------- 1) Prefer ReportLab (pure Python, reliable everywhere) ----------
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer, pagesize=A4,
+            leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36
+        )
+
+        styles = getSampleStyleSheet()
+        H1   = ParagraphStyle("H1",   parent=styles["Heading1"], fontSize=16, leading=20, spaceAfter=6)
+        Meta = ParagraphStyle("Meta", parent=styles["Normal"],   fontSize=9.5, textColor=colors.HexColor("#475569"))
+        Body = ParagraphStyle("Body", parent=styles["Normal"],   fontSize=11.5, leading=16)
+        Box  = ParagraphStyle(
+            "Box", parent=styles["Normal"],
+            backColor=colors.HexColor("#f8fafc"),
+            borderColor=colors.HexColor("#e5e7eb"),
+            borderWidth=1, borderPadding=8,
+            fontSize=11.5, leading=16
+        )
+        Pill = ParagraphStyle(
+            "Pill", parent=styles["Normal"],
+            textColor=colors.white, backColor=colors.HexColor("#059669"),
+            fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=1
+        )
+
+        story = []
+
+        # Header with logo + title
+        logo_path = finders.find("img/logo.png")
+        row = []
+        if logo_path:
+            row.append(Image(logo_path, width=28, height=28))
+        else:
+            row.append(Paragraph("<b>N</b>", H1))
+        row.append(Paragraph("Nouvel — Prescription", H1))
+        header = Table([row], colWidths=[32, 450])
+        header.setStyle(TableStyle([("VALIGN", (0,0), (-1,-1), "MIDDLE")]))
+        story.append(header)
+
+        story.append(Paragraph(f"Generated {created.strftime('%Y-%m-%d %H:%M')}", Meta))
+        story.append(Spacer(1, 6))
+
+        pill_tbl = Table([[Paragraph("Prescription", Pill)]])
+        pill_tbl.setStyle(TableStyle([
+            ("LEFTPADDING", (0,0), (-1,-1), 8),
+            ("RIGHTPADDING", (0,0), (-1,-1), 8),
+            ("TOPPADDING", (0,0), (-1,-1), 4),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+            ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#059669")),
+            ("TEXTCOLOR", (0,0), (-1,-1), colors.white),
+        ]))
+        story.append(pill_tbl)
+        story.append(Spacer(1, 10))
+
+        details = [
+            [Paragraph("<b>Patient:</b> " + (patient_name or ""), Body),
+             Paragraph("<b>Clinician:</b> " + clinician_name, Body)],
+            [Paragraph("<b>Title:</b> " + title, Body),
+             Paragraph("<b>Date:</b> " + created.strftime("%a, %b %d %Y · %H:%M"), Body)],
+        ]
+        grid = Table(details, colWidths=["*","*"])
+        grid.setStyle(TableStyle([("VALIGN", (0,0), (-1,-1), "TOP")]))
+        story.append(grid)
+        story.append(Spacer(1, 12))
+
+        story.append(Paragraph("<b>Instructions / Medications</b>", Body))
+        story.append(Spacer(1, 4))
+        story.append(Paragraph((body or "").replace("\n", "<br/>"), Box))
+
+        story.append(Spacer(1, 18))
+        story.append(Paragraph(f"© {created.strftime('%Y')} Nouvel — This document was generated electronically.", Meta))
+
+        doc.build(story)
+        pdf = buffer.getvalue()
+        buffer.close()
+
+        resp = HttpResponse(pdf, content_type="application/pdf")
+        resp["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'
+        return resp
+    except Exception:
+        pass  # If ReportLab not installed/available, try WeasyPrint next.
+
+    # ---------- 2) Try WeasyPrint (if it's installed & system deps available) ----------
+    try:
+        from weasyprint import HTML, CSS
+
+        html = render_to_string(
+            "portal/prescriptions/pdf.html",  # reuse the same pretty template you’re using in the portal
+            {
+                "rx": rx,
+                "title": title,
+                "body": body,
+                "clinician_name": clinician_name,
+                "created": created,
+                "patient": patient,
+                "absolute_base": request.build_absolute_uri("/"),
+                "logo_url": request.build_absolute_uri(staticfiles_storage.url("img/logo.png")),
+            },
+        )
+        pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf(
+            stylesheets=[CSS(string="@page { size: A4; margin: 22mm 18mm; } * { -weasy-hyphens: auto; }")]
+        )
+        resp = HttpResponse(pdf, content_type="application/pdf")
+        resp["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'
+        return resp
+    except Exception:
+        pass  # If WeasyPrint fails, fall back to plain text last.
+
+    # ---------- 3) Final fallback: plain text ----------
+    lines = [
+        f"Title: {title}",
+        f"Clinician: {clinician_name}",
+        f"Date: {created.strftime('%Y-%m-%d %H:%M')}",
+        "",
+        "Prescription:",
+        body or "",
+        "",
+    ]
+    content = "\n".join(lines).strip() + "\n"
+    resp = HttpResponse(content, content_type="text/plain; charset=utf-8")
+    resp["Content-Disposition"] = f'attachment; filename="{filename}.txt"'
+    return resp
+
+@login_required
+def rx_share_link(request, pk, rx_id):
+    """
+    Return JSON with a shareable link (e.g., to the patient portal detail page).
+    Your routing may differ; adjust as needed.
+    """
+    clinician = get_object_or_404(User, pk=pk, is_staff=True)
+    _assert_can_view(request, clinician)
+    try:
+        from apps.prescriptions.models import Prescription
+        rx = get_object_or_404(Prescription, pk=rx_id, clinician=clinician)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "Not found."}, status=404)
+
+    # If you expose a patient-portal view:
+    try:
+        share_url = request.build_absolute_uri(reverse("portal_ui:rx_detail", args=[rx.id]))
+    except Exception:
+        # Fallback to a clinician-visible URL
+        share_url = request.build_absolute_uri(reverse("clinicians_ui:rx_download", args=[clinician.pk, rx.id]))
+
+    return JsonResponse({"ok": True, "url": share_url})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def rx_edit(request, pk: int, rx_id: int):
+    clinician = get_object_or_404(User, pk=pk, is_staff=True, is_active=True)
+    if request.user != clinician and not request.user.is_superuser:
+        return redirect("clinicians_ui:rx_list", pk=pk)
+
+    rx = _get_rx_for_clinician_or_404(pk, rx_id)
+
+    if request.method == "POST":
+        title = (request.POST.get("title") or "").strip()
+        body  = (request.POST.get("body")  or "").strip()
+        patient_id = request.POST.get("patient_id")
+
+        if title:
+            rx.title = title
+        rx.body = body
+
+        if patient_id:
+            try:
+                rx.patient = Patient.objects.get(pk=int(patient_id))
+            except Patient.DoesNotExist:
+                pass
+
+        if hasattr(rx, "updated_at"):
+            from django.utils import timezone
+            rx.updated_at = timezone.now()
+
+        rx.save()
+        messages.success(request, "Prescription updated.")
+        return redirect("clinicians_ui:rx_list", pk=pk)
+
+    # GET -> modal
+    patients = Patient.objects.filter(is_active=True).order_by("family_name", "given_name")  # <-- fixed fields
+    return render(
+        request,
+        "clinicians/console/prescriptions/_edit_modal.html",
+        {"clinician": clinician, "rx": rx, "patients": patients},
+    )
+
+    # --- RX PDF generator (same look as portal) ---
+
+
+def _rx_pdf_bytes(rx, logo_url: str | None = None) -> bytes:
+    """
+    Return PDF bytes for a prescription using a clean, branded layout.
+    Pure ReportLab (no native libs required).
+    """
+    # Lazy imports so app loads even if reportlab not installed in some envs
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.units import mm
+
+    title = getattr(rx, "title", "") or f"Prescription #{rx.id}"
+    body  = getattr(rx, "body", None) or getattr(rx, "text", "") or ""
+    clinician = getattr(rx, "clinician", None)
+    clin_name = (
+        getattr(clinician, "get_full_name", lambda: "")() or
+        getattr(clinician, "username", "") or
+        "Clinician"
+    )
+    created = getattr(rx, "created_at", None) or timezone.now()
+    patient = getattr(rx, "patient", None)
+    patient_name = ""
+    if patient:
+        # prefer get_full_name, fall back to given/family_name
+        if hasattr(patient, "get_full_name") and patient.get_full_name():
+            patient_name = patient.get_full_name()
+        else:
+            given = getattr(patient, "given_name", "") or ""
+            family = getattr(patient, "family_name", "") or ""
+            patient_name = (given + " " + family).strip() or str(patient)
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=16*mm, rightMargin=16*mm,
+        topMargin=18*mm, bottomMargin=16*mm
+    )
+
+    styles = getSampleStyleSheet()
+    H1   = ParagraphStyle("H1", parent=styles["Heading1"], fontSize=16, leading=20, spaceAfter=8)
+    Meta = ParagraphStyle("Meta", parent=styles["Normal"], fontSize=9.5, textColor=colors.HexColor("#475569"))
+    Body = ParagraphStyle("Body", parent=styles["BodyText"], fontSize=11.5, leading=16)
+    Label= ParagraphStyle("Label", parent=styles["Normal"], fontSize=10.5, textColor=colors.HexColor("#0f172a"))
+    Pill = ParagraphStyle("Pill",  parent=styles["Normal"], fontSize=9, textColor=colors.white)
+
+    story = []
+
+    # Header (brand + pill)
+    story.append(Paragraph("Nouvel — Prescription", H1))
+    story.append(Paragraph(created.strftime("%Y-%m-%d %H:%M"), Meta))
+    story.append(Spacer(1, 6))
+
+    # Meta grid (2 columns)
+    data = [
+        [Paragraph("<b>Patient:</b> "   + (patient_name or "-"), Label),
+         Paragraph("<b>Clinician:</b> " + clin_name,            Label)],
+        [Paragraph("<b>Title:</b> "     + title,                Label),
+         Paragraph("<b>Date:</b> "      + created.strftime("%a, %b %d %Y · %H:%M"), Label)]
+    ]
+    table = Table(data, colWidths=[None, None])
+    table.setStyle(TableStyle([
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("LEFTPADDING", (0,0), (-1,-1), 0),
+        ("RIGHTPADDING",(0,0), (-1,-1), 6),
+        ("BOTTOMPADDING",(0,0), (-1,-1), 4),
+    ]))
+    story.append(table)
+    story.append(Spacer(1, 10))
+
+    # Body box
+    story.append(Paragraph("<b>Instructions / Medications</b>", Label))
+    # A light shaded box look
+    story.append(Spacer(1, 3))
+    story.append(Table(
+        [[Paragraph(body.replace("\n", "<br/>"), Body)]],
+        style=TableStyle([
+            ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#f8fafc")),
+            ("BOX", (0,0), (-1,-1), 0.6, colors.HexColor("#e5e7eb")),
+            ("INNERPADDING", (0,0), (-1,-1), 8),
+        ])
+    ))
+    story.append(Spacer(1, 14))
+
+    # Footer
+    story.append(Paragraph(f"© {created.strftime('%Y')} Nouvel — This document was generated electronically.", Meta))
+
+    doc.build(story)
+    return buf.getvalue()

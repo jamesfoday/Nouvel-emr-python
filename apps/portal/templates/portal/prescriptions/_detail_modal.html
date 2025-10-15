@@ -1,0 +1,40 @@
+{# This replaces the contents of #rx-modal via HTMX #}
+<div class="fixed inset-0 z-50" role="dialog" aria-modal="true">
+  <!-- overlay -->
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeRxModal()"></div>
+
+  <!-- modal -->
+  <div class="absolute inset-0 grid place-items-center p-4">
+    <div class="w-full max-w-2xl rounded-3xl border border-white/30 bg-white/90 shadow-2xl backdrop-blur">
+      <div class="flex items-start justify-between gap-4 p-5 border-b border-white/40">
+        <div>
+          <h2 class="text-lg font-semibold">
+            {{ rx.title|default:"Prescription" }}
+          </h2>
+          <p class="mt-1 text-xs text-gray-600">
+            {% if rx.created_at %}{{ rx.created_at|date:"D, M j Y" }} · {{ rx.created_at|time:"H:i" }}{% endif %}
+            {% if rx.clinician %} · Dr {{ rx.clinician.get_full_name|default:rx.clinician.username }}{% endif %}
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="{% url 'portal_ui:rx_download' rx.id %}"
+             class="rounded-xl bg-gray-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-gray-800">
+            Download
+          </a>
+          <button type="button" onclick="closeRxModal()"
+                  class="rounded-xl px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-100">
+            Close
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5">
+        {% if content %}
+          <pre class="whitespace-pre-wrap text-sm text-gray-800">{{ content }}</pre>
+        {% else %}
+          <div class="text-sm text-gray-500">No prescription text available.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>

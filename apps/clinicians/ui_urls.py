@@ -1,6 +1,7 @@
 # apps/clinicians/ui_urls.py
 from django.urls import path
 from . import ui_views as v
+from . import ui_views as cv
 
 app_name = "clinicians_ui"
 
@@ -45,6 +46,13 @@ urlpatterns = [
     path("clinicians/<int:pk>/availability/<int:avail_id>/delete/", v.availability_delete,   name="availability_delete"),
     path("clinicians/<int:pk>/requests/approve/<int:appt_id>/", v.approve_request, name="approve_request"),
     path("clinicians/<int:pk>/requests/decline/<int:appt_id>/", v.decline_request, name="decline_request"),
+
+    path("<int:pk>/prescriptions/",                       cv.rx_list,        name="rx_list"),
+    path("<int:pk>/prescriptions/<int:rx_id>/modal/",     cv.rx_view_modal,  name="rx_view_modal"),
+    path("<int:pk>/prescriptions/<int:rx_id>/download/",  cv.rx_download,    name="rx_download"),
+    path("<int:pk>/prescriptions/<int:rx_id>/share/",     cv.rx_share_link,  name="rx_share"),
+    path("<int:pk>/prescriptions/<int:rx_id>/edit/",             cv.rx_edit,        name="rx_edit")
+
 
    
 

@@ -1,0 +1,128 @@
+{% extends "portal/base.html" %}
+{% block title %}Book consultation (Calendar) · Nouvel{% endblock %}
+
+{% block content %}
+<div class="py-10 sm:py-10">
+  <div class="mx-auto w-full max-w-6xl px-4 sm:px-6 rounded-3xl bg-emerald-50/30 shadow-xl ring-1 ring-white/20 py-8">
+
+    <div class="flex items-center justify-between gap-3">
+      <h1 class="text-2xl font-semibold text-gray-900">Book a consultation</h1>
+      <div class="flex items-center gap-2">
+        <a href="{% url 'portal_ui:appts_list' %}"
+           class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white">← Back</a>
+      </div>
+    </div>
+
+    <form class="mt-5 grid grid-cols-1 md:grid-cols-5 gap-3"
+          hx-get="{% url 'portal_ui:book_appt_slots_grid' %}"
+          hx-target="#calendar-grid"
+          hx-swap="innerHTML">
+    
+        <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Clinician</label>
+
+        {% if only_id %}
+            {# Exactly one allowed clinician → show a label and a hidden input #}
+            {% for c in clinicians %}
+            {% if c.id == only_id %}
+                <div class="rounded-2xl border border-white/40 bg-white/60 px-3 py-2.5 text-gray-800">
+                Dr {{ c.get_full_name|default:c.username }}
+                </div>
+            {% endif %}
+            {% endfor %}
+            <input type="hidden" id="clinician" name="clinician_id" value="{{ only_id }}">
+        {% else %}
+            <select id="clinician" name="clinician_id" required
+                    class="w-full rounded-2xl border border-white/40 bg-white/60 px-3 py-2.5">
+            <option value="" disabled {% if not clinician_id %}selected{% endif %}>Select a clinician</option>
+            {% for c in clinicians %}
+                {% with name=c.get_full_name|default:c.username %}
+                <option value="{{ c.id }}" {% if clinician_id == c.id %}selected{% endif %}>Dr {{ name }}</option>
+                {% endwith %}
+            {% endfor %}
+            </select>
+        {% endif %}
+        </div>
+
+
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Week starting</label>
+        <input id="week_start" name="week_start" type="date"
+               class="w-full rounded-2xl border border-white/40 bg-white/60 px-3 py-2.5"
+               value="{{ week_start|date:'Y-m-d' }}">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1">Duration (min)</label>
+        <input id="duration" name="duration" type="number" min="10" step="5" value="{{ duration }}"
+               class="w-full rounded-2xl border border-white/40 bg-white/60 px-3 py-2.5">
+      </div>
+
+      <div class="md:col-span-5 flex items-end gap-2">
+        <button class="rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white">Load calendar</button>
+        
+      </div>
+    </form>
+
+<div class="mt-6 flex items-center justify-between">
+  <div class="text-sm text-gray-700">
+    Week: {{ week_start|date:"D M j" }} – {{ week_start|add:"6"|date:"D M j" }}
+  </div>
+
+  <div class="flex items-center gap-2">
+    
+    <button
+      type="button"
+      class="rounded-xl border border-white/30 bg-white/60 px-3 py-1.5 text-sm"
+      hx-get="{% url 'portal_ui:book_appt_slots_grid' %}"
+      hx-target="#calendar-grid"
+      hx-swap="innerHTML"
+      hx-vals='js:(() => {
+        const c = document.getElementById("clinician").value;
+        const d = document.getElementById("week_start").value;
+        // fallback to today if empty
+        const base = d ? new Date(d) : new Date();
+        base.setDate(base.getDate() - 7);
+        // sync the input so the header stays consistent
+        document.getElementById("week_start").value = base.toISOString().slice(0,10);
+        return {
+          clinician_id: c,
+          week_start: document.getElementById("week_start").value,
+          duration: document.getElementById("duration").value || 30,
+        };
+      })()'>
+      ← Prev
+    </button>
+
+    
+    <button
+      type="button"
+      class="rounded-xl border border-white/30 bg-white/60 px-3 py-1.5 text-sm"
+      hx-get="{% url 'portal_ui:book_appt_slots_grid' %}"
+      hx-target="#calendar-grid"
+      hx-swap="innerHTML"
+      hx-vals='js:(() => {
+        const c = document.getElementById("clinician").value;
+        const d = document.getElementById("week_start").value;
+        const base = d ? new Date(d) : new Date();
+        base.setDate(base.getDate() + 7);
+        document.getElementById("week_start").value = base.toISOString().slice(0,10);
+        return {
+          clinician_id: c,
+          week_start: document.getElementById("week_start").value,
+          duration: document.getElementById("duration").value || 30,
+        };
+      })()'>
+      Next →
+    </button>
+  </div>
+</div>
+
+
+    <div id="calendar-grid" class="mt-4">
+      {# HTMX will load _calendar_grid.html here #}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

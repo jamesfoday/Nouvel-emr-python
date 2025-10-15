@@ -1,0 +1,12 @@
+<div id="modal-overlay" class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"></div>
+<div class="fixed inset-0 z-50 grid place-items-center p-4">
+  <div class="w-full max-w-2xl rounded-2xl border border-white/30 bg-white/90 shadow-2xl backdrop-blur">
+    <div class="flex items-center justify-between p-4 border-b border-white/40">
+      <h3 class="text-lg font-semibold text-gray-900">{% block modal_title %}{% endblock %}</h3>
+      <button data-close class="rounded-full p-2 text-gray-600 hover:bg-gray-100 cursor-pointer" aria-label="Close">✕</button>
+    </div>
+    <div class="p-4">
+      {% block modal_body %}{% endblock %}
+    </div>
+  </div>
+</div>

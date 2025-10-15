@@ -1,70 +1,167 @@
 {% extends "base.html" %}
+{% load static %}
+
+{% block title %}Prescriptions · {{ clinician.get_full_name|default:clinician.username }}{% endblock %}
+
 {% block content %}
-<div class="mx-auto mt-6 w-full max-w-7xl px-3 sm:px-6">
-  <div class="rounded-2xl bg-[#EAF5ED] p-1">
-    <div class="rounded-2xl bg-white p-4 sm:p-6 shadow">
-      <div class="mb-4 flex items-center justify-between">
+<div class="py-10 sm:py-10">
+  <div class="mx-auto w-full max-w-5xl px-4 sm:px-6 rounded-3xl bg-emerald-50/30 shadow-xl backdrop-blur-lg ring-1 ring-white/20 py-8 sm:py-10">
+
+    <!-- Glass header -->
+    <div class="rounded-2xl border border-white/30 bg-white/50 p-4 sm:p-5 shadow-md backdrop-blur supports-[backdrop-filter]:bg-white/40">
+      <div class="flex items-center justify-between gap-3">
         <a href="{% url 'prescriptions_ui:create' clinician.pk %}"
-           class="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-800">
-          Create <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-white">+</span>
+           class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:brightness-95 active:brightness-90 cursor-pointer">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Create
         </a>
-        <h1 class="text-lg sm:text-xl font-semibold text-gray-700">Prescription</h1>
-        <div class="w-28"></div>
+
+        <h1 class="text-lg sm:text-2xl font-semibold tracking-tight text-gray-900">Prescriptions</h1>
+
+        <a href="{% url 'clinicians_ui:dashboard' clinician.pk %}"
+           class="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-3 py-1.5 text-sm font-semibold text-white hover:brightness-95 active:brightness-90 cursor-pointer">
+          Back
+        </a>
       </div>
 
-      <div class="rounded-2xl bg-[#F4FAF5] min-h-[320px] sm:min-h-[420px] p-4 sm:p-6">
-        <div class="divide-y">
-          {% for rx in prescriptions %}
-            <div class="flex items-center gap-3 px-4 py-3">
-              <div class="flex-1 min-w-0">
-                <div class="font-semibold text-gray-700 truncate">{{ rx.title }}</div>
-                <div class="text-sm text-gray-500 truncate">
-                  {{ rx.patient.full_name }} · {{ rx.created_at|date:"d M Y, H:i" }}
-                </div>
-              </div>
-              <div class="flex items-center gap-4 text-gray-600">
-                <!-- Edit -->
-                <a href="{% url 'prescriptions_ui:view' clinician.pk rx.pk %}" class="flex flex-col items-center text-xs">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M4 20h4l10.5-10.5a2.121 2.121 0 10-3-3L5 17v3z"/></svg>
-                  Edit
-                </a>
-                <!-- View -->
-                <a href="{% url 'prescriptions_ui:view' clinician.pk rx.pk %}" class="flex flex-col items-center text-xs">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 110-10 5 5 0 010 10z"/></svg>
-                  View
-                </a>
-                <!-- Share (placeholder) -->
-                <span class="flex flex-col items-center text-xs opacity-60 cursor-not-allowed" title="Coming soon">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M15 8a3 3 0 10-2.83-4H12a3 3 0 102.83 4zM6 14a3 3 0 10-2.83 4H3a3 3 0 102.83-4zM18 14a3 3 0 10-2.83 4H15a3 3 0 102.83-4z"/><path d="M8 13l8-5M8 11l8 5"/></svg>
-                  Share
-                </span>
-                <!-- Download (placeholder) -->
-                <span class="flex flex-col items-center text-xs opacity-60 cursor-not-allowed" title="Coming soon">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17h16v4H4z"/></svg>
-                  download
-                </span>
-                <!-- Delete -->
-                <form method="post" action="{% url 'prescriptions_ui:delete' clinician.pk rx.pk %}" onsubmit="return confirm('Delete this prescription?')">
-                  {% csrf_token %}
-                  <button class="flex flex-col items-center text-xs text-red-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 7h12v13a2 2 0 01-2 2H8a2 2 0 01-2-2V7zm3-4h6l1 1h4v2H4V4h4l1-1z"/></svg>
-                    delete
-                  </button>
-                </form>
-              </div>
-            </div>
-          {% empty %}
-            <div class="px-4 py-14 sm:py-20 text-center text-gray-500">No prescriptions yet.</div>
-          {% endfor %}
+      {% if q is not None %}
+      <form method="get" class="mt-3">
+        <div class="flex items-center gap-2 rounded-2xl border border-white/40 bg-white/60 px-4 py-2.5 shadow-inner">
+          <input name="q" value="{{ q }}" placeholder="Search prescriptions"
+                 class="w-full bg-transparent outline-none text-gray-700"/>
+          <button class="text-gray-600 cursor-pointer" aria-label="Search">
+            <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M12.9 14.32a7 7 0 1 1 1.414-1.414l3.39 3.39a1 1 0 0 1-1.414 1.415l-3.39-3.39ZM14 9a5 5 0 1 0-10 0 5 5 0 0 0 10 0Z"/></svg>
+          </button>
         </div>
-      </div>
+      </form>
+      {% endif %}
+    </div>
 
-      <div class="mt-8">
-        <a href="{% url 'clinicians_ui:dashboard' clinician.pk %}" class="inline-flex items-center gap-2 text-gray-700">
-          <span class="grid h-8 w-8 place-items-center rounded-full bg-gray-100">&lsaquo;</span> Back
-        </a>
-      </div>
+    <!-- List -->
+    <div class="mt-6">
+      {% if prescriptions %}
+        <ul class="space-y-4">
+          {% for rx in prescriptions %}
+            {% with title=rx.title|default:"Prescription" %}
+            <li>
+              <article class="group rounded-3xl border border-white/30 bg-white/60 p-4 sm:p-5 shadow-xl transition backdrop-blur hover:shadow-2xl">
+                <div class="flex items-center gap-4">
+                 
+
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between gap-3">
+                      <h2 class="truncate text-[15px] sm:text-base font-semibold text-gray-900">{{ title }}</h2>
+
+                      {% if rx.status %}
+                        <span class="shrink-0 rounded-full border border-black/10 bg-white/60 px-2.5 py-1 text-xs font-semibold text-gray-700 backdrop-blur">
+                          {{ rx.status|title }}
+                        </span>
+                      {% endif %}
+                    </div>
+
+                    <div class="mt-1 text-sm text-gray-600 truncate">
+                      {% if rx.patient %}<span class="font-medium text-gray-700">{{ rx.patient.full_name|default:rx.patient }}</span> · {% endif %}
+                      {% if rx.created_at %}{{ rx.created_at|date:"D, M j Y" }} · {{ rx.created_at|time:"H:i" }}{% endif %}
+                    </div>
+
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                      <!-- View (modal) -->
+                      <button
+                        hx-get="{% url 'clinicians_ui:rx_view_modal' clinician.pk rx.id %}"
+                        hx-target="#modal-root" hx-swap="innerHTML"
+                        class="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow hover:brightness-95 active:brightness-90 cursor-pointer">
+                        View
+                      </button>
+
+                      <!-- Edit (modal) -->
+                      <button
+                        hx-get="{% url 'clinicians_ui:rx_edit' clinician.pk rx.id %}"
+                        hx-target="#modal-root" hx-swap="innerHTML"
+                        class="inline-flex items-center gap-2 rounded-2xl bg-white px-3 py-1.5 text-xs font-semibold text-gray-900 border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                        Edit
+                      </button>
+
+                      <!-- Download PDF -->
+                      <a href="{% url 'clinicians_ui:rx_download' clinician.pk rx.pk %}"
+                         class="inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white shadow hover:brightness-95 cursor-pointer">
+                        Download
+                      </a>
+
+                    
+
+                      <!-- Delete -->
+                      <form method="post" action="{% url 'prescriptions_ui:delete' clinician.pk rx.pk %}" onsubmit="return confirm('Delete this prescription?')">
+                        {% csrf_token %}
+                        <button class="inline-flex items-center gap-2 rounded-2xl bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow hover:brightness-95 cursor-pointer">
+                          Delete
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </li>
+            {% endwith %}
+          {% empty %}
+            <li>
+              <div class="grid place-items-center rounded-3xl border border-white/30 bg-white/50 p-10 text-gray-400 backdrop-blur">
+                No prescriptions yet.
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="grid place-items-center rounded-3xl border border-white/30 bg-white/50 p-10 text-gray-400 backdrop-blur">
+          No prescriptions yet.
+        </div>
+      {% endif %}
     </div>
   </div>
 </div>
+
+<!-- Modal host (overlay + panel injected by HTMX responses) -->
+<div id="modal-root" class="fixed inset-0 z-50 hidden"></div>
+
+<script>
+  // Show modal (unhide container) once HTMX swaps in content
+  document.addEventListener('htmx:afterSwap', function (e) {
+    if (e.detail && e.detail.target && e.detail.target.id === 'modal-root') {
+      e.detail.target.classList.remove('hidden');
+    }
+  });
+
+  // Close helper the modal snippets can call
+  function closeModalRoot() {
+    const host = document.getElementById('modal-root');
+    host.classList.add('hidden');
+    host.innerHTML = '';
+  }
+
+  // Share: copy a per-RX link returned by your share endpoint
+  async function copyRxLink(btn, id) {
+    try {
+      const url = "{% url 'clinicians_ui:rx_share' clinician.pk 0 %}".replace('/0/', `/${id}/`);
+      const resp = await fetch(url, {headers: {'X-Requested-With':'XMLHttpRequest'}});
+      const data = await resp.json();
+      if (data.ok && data.url) {
+        await navigator.clipboard.writeText(data.url);
+        btn.textContent = 'Copied';
+        setTimeout(() => btn.textContent = 'Share', 1200);
+      } else {
+        btn.textContent = 'Failed';
+        setTimeout(() => btn.textContent = 'Share', 1200);
+      }
+    } catch (e) {
+      btn.textContent = 'Error';
+      setTimeout(() => btn.textContent = 'Share', 1200);
+    }
+  }
+
+  // ESC to close modal
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeModalRoot();
+  });
+</script>
 {% endblock %}

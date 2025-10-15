@@ -1,0 +1,106 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block title %}Prescriptions · Nouvel{% endblock %}
+
+{% block content %}
+<div class="py-10 sm:py-10">
+  <div class="mx-auto w-full max-w-5xl px-4 sm:px-6 rounded-3xl bg-emerald-50/30 shadow-xl backdrop-blur-lg ring-1 ring-white/20 py-8 sm:py-10">
+
+    <div class="rounded-2xl border border-white/30 bg-white/50 p-4 sm:p-5 shadow-md backdrop-blur supports-[backdrop-filter]:bg-white/40">
+      <div class="flex items-center justify-between gap-3">
+        <h1 class="text-lg sm:text-2xl font-semibold tracking-tight text-gray-900">Prescriptions</h1>
+        <a href="{% url 'portal_ui:home' %}"
+           class="hidden sm:inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white">
+          Home
+        </a>
+      </div>
+
+      <form method="get" class="mt-4">
+        <div class="flex items-center gap-2 rounded-2xl border border-white/40 bg-white/60 px-4 py-2.5 shadow-inner">
+          <input name="q" value="{{ q }}" placeholder="Search prescriptions"
+                 class="w-full bg-transparent outline-none text-gray-700"/>
+          <button class="text-gray-600" aria-label="Search">
+            <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M12.9 14.32a7 7 0 1 1 1.414-1.414l3.39 3.39a1 1 0 0 1-1.414 1.415l-3.39-3.39ZM14 9a5 5 0 1 0-10 0 5 5 0 0 0 10 0Z"/></svg>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {% if prescriptions %}
+      <ul class="mt-6 space-y-4">
+        {% for rx in prescriptions %}
+          {% with title=rx.title|default:"Prescription" %}
+          <li>
+            <article class="group rounded-3xl border border-white/30 bg-white/60 p-4 sm:p-5 shadow-xl transition backdrop-blur hover:shadow-2xl">
+              <div class="flex items-center gap-4">
+                <!-- <span class="h-12 w-12 sm:h-14 sm:w-14 rounded-full ring-1 ring-black/5 bg-gradient-to-br from-emerald-100 to-emerald-50 grid place-items-center text-sm font-bold text-emerald-900">
+                  RX
+                </span> -->
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center justify-between gap-3">
+                    <h2 class="truncate text-[15px] sm:text-base font-semibold text-gray-900">{{ title }}</h2>
+                    {% if rx.status %}
+                      <span class="shrink-0 rounded-full border border-black/10 bg-white/60 px-2.5 py-1 text-xs font-semibold text-gray-700 backdrop-blur">
+                        {{ rx.status|title }}
+                      </span>
+                    {% endif %}
+                  </div>
+                  <div class="mt-1 text-sm text-gray-600">
+                    {% if rx.created_at %}
+                      {{ rx.created_at|date:"D, M j Y" }} · {{ rx.created_at|time:"H:i" }}
+                    {% endif %}
+                    {% if rx.clinician %} · Dr {{ rx.clinician.get_full_name|default:rx.clinician.username }}{% endif %}
+                  </div>
+
+                  <div class="mt-3 flex items-center gap-2">
+                   <a hx-get="{% url 'portal_ui:rx_detail' rx.id %}?as=modal"
+                    hx-target="#rx-modal"
+                    hx-swap="innerHTML"
+                    class="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow hover:brightness-95 cursor-pointer">
+                    View
+                    </a>
+
+                    <a href="{% url 'portal_ui:rx_download' rx.id %}"
+                       class="inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white shadow hover:brightness-95">
+                      Download
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </li>
+          {% endwith %}
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="mt-10 grid place-items-center rounded-3xl border border-white/30 bg-white/50 p-10 text-gray-400 backdrop-blur">
+        No prescriptions yet.
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal host -->
+<div id="rx-modal" class="fixed inset-0 z-50 hidden"></div>
+
+<script>
+  function closeRxModal() {
+    const host = document.getElementById('rx-modal');
+    host.classList.add('hidden');
+    host.innerHTML = '';
+  }
+
+  // Show modal once HTMX swaps in the content
+  document.addEventListener('htmx:afterSwap', function (e) {
+    if (e.detail && e.detail.target && e.detail.target.id === 'rx-modal') {
+      e.detail.target.classList.remove('hidden');
+    }
+  });
+
+  // ESC to close
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeRxModal();
+  });
+</script>
+
+{% endblock %}
