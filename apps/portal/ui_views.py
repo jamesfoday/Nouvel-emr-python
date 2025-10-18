@@ -29,6 +29,13 @@ from django.contrib.staticfiles import finders
 import io
 from os.path import basename
 import mimetypes
+from apps.labs.models import LabOrder, DiagnosticReport
+from apps.labs.models import DiagnosticReport, LabOrder, Observation
+from django.db.models import Prefetch
+from apps.labs.forms import PatientExternalResultForm
+from apps.labs.models import ExternalLabResult, LabOrder
+
+
 
 
 
@@ -1290,3 +1297,290 @@ def docs_view_modal(request, doc_id: int):
         "download_url": reverse("portal_ui:docs_download", args=[doc.id]),
     }
     return render(request, "portal/documents/_modal.html", ctx)
+
+
+@login_required
+def portal_tests_list(request: HttpRequest):
+    """
+    Patient-facing combined 'Tests' page with tabs:
+      - orders: LabOrder for this patient
+      - reports: DiagnosticReport for this patient
+    """
+    patient = _current_patient_for_user(request.user)
+    if not patient:
+        return HttpResponseBadRequest("No patient profile linked to your account.")
+
+    tab = (request.GET.get("tab") or "orders").lower()
+    q = (request.GET.get("q") or "").strip()
+
+    # Orders
+    orders_qs = (
+        LabOrder.objects
+        .filter(patient=patient)
+        .select_related("catalog", "clinician")
+        .order_by("-ordered_at", "-id")
+    )
+
+    # Reports
+    reports_qs = (
+        DiagnosticReport.objects
+        .filter(patient=patient)
+        .order_by("-issued_at", "-id")
+    )
+
+    if q:
+        # lightweight search across common fields
+        orders_qs = orders_qs.filter(
+            Q(catalog__name__icontains=q) | Q(catalog__code__icontains=q) |
+            Q(reason__icontains=q) | Q(notes__icontains=q)
+        )
+        reports_qs = reports_qs.filter(
+            Q(performing_lab__icontains=q)
+        )
+
+    ctx = {
+        "tab": tab if tab in {"orders", "reports"} else "orders",
+        "q": q,
+        "orders": list(orders_qs[:200]),
+        "reports": list(reports_qs[:200]),
+    }
+    return render(request, "portal/tests/list.html", ctx)
+
+
+
+
+@login_required
+def portal_tests_panel(request):
+    """
+    Patient dashboard panel — recent lab reports & orders.
+    Uses the same patient resolver as the Tests page.
+    """
+    # Reuse the helper your portal already uses for patient scoping
+    try:
+        patient = _current_patient_for_user(request.user)  # this exists in your portal views
+    except NameError:
+        # Fallback if helper isn't available for some reason
+        patient = getattr(request.user, "patient_profile", None)
+
+    if not patient:
+        return render(request, "portal/panels/tests_panel.html", {"reports": [], "orders": []})
+
+    
+    reports_qs = (
+        DiagnosticReport.objects
+        .filter(patient=patient)
+        .prefetch_related(
+            Prefetch("observations", queryset=Observation.objects.order_by("id")),
+        )
+        .order_by("-issued_at", "-id")[:5]
+    )
+
+    orders_qs = (
+        LabOrder.objects
+        .filter(patient=patient)
+        .select_related("catalog")
+        .order_by("-ordered_at", "-id")[:5]
+    )
+
+    return render(
+        request,
+        "portal/panels/tests_panel.html",
+        {"reports": reports_qs, "orders": orders_qs}
+    )
+
+
+def _patient_for(request):
+    
+    try:
+        return _current_patient_for_user(request.user)
+    except NameError:
+        return getattr(request.user, "patient_profile", None)
+
+@login_required
+def portal_tests_panel(request):
+    patient = _patient_for(request)
+    if not patient:
+        return render(request, "portal/panels/tests_panel.html", {"reports": [], "orders": [], "tab": "orders"})
+
+    tab = (request.GET.get("tab") or "orders").lower()
+    # Recent data
+    reports_qs = (
+        DiagnosticReport.objects
+        .filter(patient=patient)
+        .prefetch_related("observations")   
+        .order_by("-issued_at", "-id")[:5]
+    )
+    orders_qs = (
+        LabOrder.objects
+        .filter(patient=patient)
+        .select_related("catalog")
+        .order_by("-ordered_at", "-id")[:5]
+    )
+    return render(request, "portal/panels/tests_panel.html", {
+        "reports": reports_qs,
+        "orders": orders_qs,
+        "tab": tab,
+    })
+
+@login_required
+def portal_tests_order_detail(request, order_id: int):
+    """
+    Returns the modal (partial) with order details. HTMX target: #modal-root
+    """
+    patient = _patient_for(request)
+    order = get_object_or_404(LabOrder.objects.select_related("catalog"), pk=order_id, patient=patient)
+    return render(request, "portal/tests/order_detail_modal.html", {"o": order})
+
+
+@login_required
+def portal_tests_report_detail(request, report_id: int):
+    """
+    HTMX partial: returns a modal with diagnostic report details + observations.
+    Target: #modal-root
+    """
+    patient = _patient_for(request)
+    report = get_object_or_404(
+        DiagnosticReport.objects.prefetch_related("observations"),  
+        pk=report_id,
+        patient=patient,
+    )
+
+    # Support either related_name="observations" or default "observation_set"
+    if hasattr(report, "observations"):
+        obs = report.observations.all()
+    else:
+        obs = report.observation_set.all()
+
+    return render(request, "portal/tests/report_detail_modal.html", {"r": report, "obs": obs})
+
+def _patient_for(request):
+    try:
+        return _current_patient_for_user(request.user)
+    except NameError:
+        return getattr(request.user, "patient_profile", None)
+
+
+def portal_my_results_list(request):
+    patient = _patient_for(request)
+    if not patient:
+        return redirect("portal_ui:dashboard")
+
+    q = (request.GET.get("q") or "").strip()
+    qs = ExternalLabResult.objects.filter(patient=patient, is_deleted_by_patient=False).order_by("-created_at")
+    if q:
+        qs = qs.filter(
+            Q(title__icontains=q) | Q(vendor_name__icontains=q) |
+            Q(order__catalog__name__icontains=q) | Q(order__catalog__code__icontains=q)
+        ).select_related("order__catalog")
+
+    return render(request, "portal/tests/my_uploads_list.html", {"items": qs, "q": q})
+
+
+@login_required
+def portal_upload_external_result(request, order_id: int | None = None):
+    """
+    Patient uploads an external lab result (modal or full page).
+    - Limits clinician choices in the form to only the patient’s allowed clinicians.
+    - On success:
+        • HTMX: returns a small success snippet + triggers refresh.
+        • Non-HTMX: redirects to the tests list (orders tab) or “my uploads”.
+    """
+    patient = _patient_for(request)
+    if not patient:
+        # safest fallback: tests list page
+        return redirect("portal_ui:tests_list")
+
+    # Optional: attach to one of the patient’s orders
+    order = None
+    if order_id is not None:
+        order = get_object_or_404(LabOrder, pk=order_id, patient=patient)
+
+    if request.method == "POST":
+        form = PatientExternalResultForm(request.POST, request.FILES, patient=patient, order=order)
+        if form.is_valid():
+            er = form.save(commit=False)
+            er.patient = patient
+            er.save()
+
+            messages.success(request, "Result submitted.")
+            # If called via HTMX, return a small success html and trigger a refresh
+            if request.headers.get("HX-Request"):
+                resp = render(request, "portal/tests/_upload_success.html", {"er": er})
+                resp["HX-Trigger"] = '{"tests-refresh": true}'
+                return resp
+
+            # Non-HTMX: send them to their uploads or tests page
+            next_url = request.GET.get("next")
+            if next_url:
+                return redirect(next_url)
+            # Prefer “my uploads” if you created that page; otherwise tests list.
+            try:
+                return redirect("portal_ui:tests_my_uploads")
+            except Exception:
+                return redirect("portal_ui:tests_list")
+    else:
+        form = PatientExternalResultForm(patient=patient, order=order)
+
+    return render(request, "portal/tests/upload_modal.html", {"form": form, "order": order})
+
+
+@login_required
+def portal_my_result_edit(request, er_id: int):
+    """
+    Patient edits a previously uploaded external result.
+    Keeps clinician restriction via the form (patient=...).
+    """
+    patient = _patient_for(request)
+    if not patient:
+        return redirect("portal_ui:tests_list")
+
+    er = get_object_or_404(ExternalLabResult, pk=er_id, patient=patient, is_deleted_by_patient=False)
+    order = er.order
+
+    if request.method == "POST":
+        form = PatientExternalResultForm(request.POST, request.FILES, instance=er, patient=patient, order=order)
+        if form.is_valid():
+            er = form.save()
+            messages.success(request, "Result updated.")
+
+            if request.headers.get("HX-Request"):
+                resp = render(request, "portal/tests/_upload_success.html", {"er": er})
+                resp["HX-Trigger"] = '{"tests-refresh": true}'
+                return resp
+
+            try:
+                return redirect("portal_ui:tests_my_uploads")
+            except Exception:
+                return redirect("portal_ui:tests_list")
+    else:
+        form = PatientExternalResultForm(instance=er, patient=patient, order=order)
+
+    return render(request, "portal/tests/upload_modal.html", {"form": form, "order": order})
+
+
+@login_required
+def portal_my_result_delete(request, er_id: int):
+    """
+    Soft-delete for the patient view only — does not remove the record from the clinician inbox.
+    """
+    patient = _patient_for(request)
+    if not patient:
+        return redirect("portal_ui:tests_list")
+
+    er = get_object_or_404(ExternalLabResult, pk=er_id, patient=patient, is_deleted_by_patient=False)
+
+    if request.method == "POST":
+        er.is_deleted_by_patient = True
+        er.save(update_fields=["is_deleted_by_patient", "updated_at"])
+        messages.info(request, "Result removed from your view.")
+
+        if request.headers.get("HX-Request"):
+            # Return a tiny success fragment for inline removal
+            return render(request, "portal/tests/_delete_success.html")
+
+        try:
+            return redirect("portal_ui:tests_my_uploads")
+        except Exception:
+            return redirect("portal_ui:tests_list")
+
+    return render(request, "portal/tests/confirm_delete_modal.html", {"er": er})

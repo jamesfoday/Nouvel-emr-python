@@ -1,0 +1,90 @@
+{# templates/portal/panels/tests_panel.html #}
+
+<div data-tests-panel>
+  <div class="flex items-center justify-between mb-3">
+    <div class="inline-flex rounded-xl bg-emerald-100/40 p-1">
+      <button
+        class="px-3 py-1.5 rounded-lg text-sm font-semibold
+               {% if tab == 'orders' %} bg-white shadow text-emerald-700 {% else %} text-emerald-800 hover:bg-white/60 {% endif %}"
+        hx-get="{% url 'portal_ui:tests_panel' %}?tab=orders"
+        hx-target="closest [data-tests-panel]"
+        hx-swap="outerHTML">
+        Orders
+      </button>
+      <button
+        class="ml-1 px-3 py-1.5 rounded-lg text-sm font-semibold
+               {% if tab == 'reports' %} bg-white shadow text-emerald-700 {% else %} text-emerald-800 hover:bg-white/60 {% endif %}"
+        hx-get="{% url 'portal_ui:tests_panel' %}?tab=reports"
+        hx-target="closest [data-tests-panel]"
+        hx-swap="outerHTML">
+        Reports
+      </button>
+    </div>
+<!-- 
+    <a href="{% url 'portal_ui:tests_list' %}"
+       class="shrink-0 inline-flex items-center rounded-full bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-200">
+      See all
+    </a> -->
+  </div>
+
+  {% if tab == 'reports' %}
+    {% if reports %}
+      <div class="space-y-2">
+        {% for r in reports %}
+          <div class="rounded-lg border border-gray-200 p-3 flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="font-medium text-gray-900 truncate">{{ r.performing_lab|default:"Diagnostic Report" }}</div>
+              <div class="text-xs text-gray-500">{{ r.issued_at|date:"M j, Y" }} · {{ r.status|title }}</div>
+            </div>
+            <div class="shrink-0 flex items-center gap-2">
+              {% if r.pdf %}
+                <a href="{{ r.pdf.url }}" target="_blank" class="text-emerald-700 text-sm underline">Download</a>
+              {% endif %}
+              <button
+                class="rounded-xl bg-gray-900/90 px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95"
+                hx-get="{% url 'portal_ui:tests_report_detail' r.id %}"
+                hx-target="#modal-root"
+                hx-swap="innerHTML">
+                View
+              </button>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-gray-400 text-sm">No recent report activity.</div>
+    {% endif %}
+  {% else %}
+    {% if orders %}
+      <div class="space-y-2">
+        {% for o in orders %}
+          <div class="rounded-lg border border-gray-200 p-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="font-medium text-gray-900 truncate">
+                  {{ o.catalog.name }} ({{ o.catalog.code }})
+                </div>
+                <div class="text-xs text-gray-500">
+                  {{ o.ordered_at|date:"M j, Y" }} · {{ o.priority|title }} · {{ o.status|title }}
+                </div>
+                {% if o.reason %}
+                  <div class="text-xs text-gray-500 mt-1 truncate">{{ o.reason }}</div>
+                {% endif %}
+              </div>
+
+              <button
+                class="shrink-0 rounded-xl bg-gray-900/90 px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95"
+                hx-get="{% url 'portal_ui:tests_order_detail' o.id %}"
+                hx-target="#modal-root"
+                hx-swap="innerHTML">
+                View
+              </button>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-gray-400 text-sm">No recent order activity.</div>
+    {% endif %}
+  {% endif %}
+</div>

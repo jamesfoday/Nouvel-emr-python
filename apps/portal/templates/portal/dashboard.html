@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{# Add a Logout button specifically on the patient dashboard app bar #}
+
 {% block appbar_right %}
   <form method="post" action="{% url 'logout' %}" class="m-0">
     {% csrf_token %}
@@ -25,7 +25,7 @@
 <div class="p-6 space-y-6 pb-28 md:pb-6">
   <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-    {# Profile card #}
+    <!-- Profile card -->
     <div class="bg-teal-500 text-white rounded-3xl p-8 lg:p-10 flex flex-col items-center text-center shadow-sm">
       <div class="w-44 h-44 rounded-full bg-white grid place-items-center">
         {% if patient and patient.avatar %}
@@ -47,7 +47,7 @@
       </div>
     </div>
 
-    {# Consultation #}
+    <!-- Consultation -->
     <section class="rounded-2xl bg-white p-4 ring-1 ring-black/5 md:col-span-2">
       <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div class="font-semibold">Consultation</div>
@@ -71,19 +71,17 @@
           </div>
 
           <a href="{% url 'portal_ui:book_appt_calendar' %}"
-          class="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-          Book
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M12 5v14m-7-7h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </a>
+             class="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+            Book
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 5v14m-7-7h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </a>
 
-
-
-           <a href="{% url 'portal_ui:appts_list' %}"
-     class="inline-flex items-center rounded-xl bg-gray-100 hover:bg-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-700">
-    See all
-  </a>
+          <a href="{% url 'portal_ui:appts_list' %}"
+             class="inline-flex items-center rounded-xl bg-gray-100 hover:bg-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-700">
+            See all
+          </a>
         </div>
       </div>
 
@@ -96,12 +94,20 @@
       </div>
     </section>
 
-    {# Tests #}
+    <!-- Tests -->
     <section class="rounded-2xl bg-white p-4 ring-1 ring-black/5">
+      <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"> 
+        <div class="font-semibold">Tests</div>
+            <a href="{% url 'portal_ui:tests_list' %}"
+             class="shrink-0 inline-flex items-center rounded-full bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-200">
+            See all
+          </a>
+         </div>
+         
       <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div class="font-semibold">Test</div>
+    
 
-        <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        <div class="flex w-half flex-wrap items-center gap-2 sm:w-auto">
           <div class="relative order-1 w-full sm:order-none sm:w-64">
             <input
               id="p-tests-q"
@@ -109,7 +115,7 @@
               placeholder="Search tests (title)"
               class="w-full rounded-full border border-gray-300 px-4 py-2 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
               hx-get="{% url 'portal_ui:tests_panel' %}"
-              hx-target="#p-tests"
+              hx-target="#tests-panel"
               hx-trigger="input changed delay:350ms, search"
               hx-include="#p-tests-q"
               name="q"
@@ -119,23 +125,29 @@
             </svg>
           </div>
 
-          <a href="#"
-             class="shrink-0 inline-flex items-center rounded-full bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-200">
-            See all
-          </a>
+        
+
+          <button
+          class="shrink-0 inline-flex items-center rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+          hx-get="{% url 'portal_ui:tests_upload_result' %}"
+          hx-target="#modal-root"
+          hx-swap="innerHTML">
+          Upload result
+        </button>
+
         </div>
       </div>
 
-      <div id="p-tests"
-           class="min-h-[84px]"
+      <div id="tests-panel"
            hx-get="{% url 'portal_ui:tests_panel' %}"
            hx-trigger="load"
+           hx-target="this"
            hx-swap="innerHTML">
-        <div class="text-sm text-gray-400">Loading…</div>
+        <div class="text-center text-gray-400 py-6">Loading…</div>
       </div>
     </section>
 
-    {# Desktop quick actions (optional) #}
+    <!-- Desktop quick actions -->
     <div class="bg-white rounded-2xl p-4 ring-1 ring-black/5 space-y-4 hidden md:block">
       <div class="grid grid-cols-2 gap-4">
         <a href="{% url 'portal_ui:appts_list' %}" class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
@@ -147,7 +159,7 @@
           <div class="text-base font-semibold">Appointments</div>
         </a>
 
-        <a href="#p-tests" class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
+        <a href="{% url 'portal_ui:tests_list' %}" class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
           <div class="shortcut-circle relative">
             <img src="{% static 'img/shortcuts/tests.svg' %}" alt="Tests" class="w-8 h-8"
                  onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
@@ -156,31 +168,27 @@
           <div class="text-base font-semibold">Tests</div>
         </a>
 
-      <a href="{% url 'portal_ui:rx_list' %}"
-      class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
-      <div class="shortcut-circle relative">
-        <img src="{% static 'img/shortcuts/prescription.svg' %}" alt="Prescription" class="w-8 h-8"
-            onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
-        <span class="hidden absolute inset-0 place-items-center text-2xl">💬</span>
-      </div>
-      <div class="text-base font-semibold">Prescription</div>
-    </a>
+        <a href="{% url 'portal_ui:rx_list' %}" class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
+          <div class="shortcut-circle relative">
+            <img src="{% static 'img/shortcuts/prescription.svg' %}" alt="Prescription" class="w-8 h-8"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
+            <span class="hidden absolute inset-0 place-items-center text-2xl">💬</span>
+          </div>
+          <div class="text-base font-semibold">Prescription</div>
+        </a>
 
-
-     <a href="{% url 'portal_ui:docs_list' %}"
-   class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 cursor-pointer">
-  <div class="shortcut-circle relative">
-    <img src="{% static 'img/shortcuts/messages.svg' %}" alt="Documents" class="w-8 h-8"
-         onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
-    <span class="hidden absolute inset-0 place-items-center text-2xl">📄</span>
-  </div>
-  <div class="text-base font-semibold">Documents</div>
-</a>
-
+        <a href="{% url 'portal_ui:docs_list' %}" class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 cursor-pointer">
+          <div class="shortcut-circle relative">
+            <img src="{% static 'img/shortcuts/messages.svg' %}" alt="Documents" class="w-8 h-8"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
+            <span class="hidden absolute inset-0 place-items-center text-2xl">📄</span>
+          </div>
+          <div class="text-base font-semibold">Documents</div>
+        </a>
       </div>
     </div>
 
-    {# Direct Messages #}
+    <!-- Direct Messages -->
     <div class="lg:col-span-3 bg-white rounded-2xl p-0 ring-1 ring-black/5">
       <div class="flex border-b">
         <button class="px-4 py-2 text-gray-500"
@@ -199,24 +207,23 @@
   </div>
 </div>
 
-{# ------------------------------------------------------------------------- #}
-{# Mobile dock (mobile/tablet only). Uses primary_shortcuts / more_shortcuts #}
-{# If view doesn't provide them, fall back to sensible defaults.             #}
-{# ------------------------------------------------------------------------- #}
-
+<!-- Mobile dock -->
 <div class="mobile-dock md:hidden">
   <div class="mobile-dock__row">
+    <!-- Left button (fallback: Tests) -->
+   <!-- Left button (fallback: Tests) -->
+<a
+  href="{% if primary_shortcuts and primary_shortcuts.0.href %}{{ primary_shortcuts.0.href }}{% else %}{% url 'portal_ui:tests_list' %}{% endif %}"
+  class="dock-btn"
+>
+  <span class="dock-btn__circle">
+    <img src="{% static 'img/shortcuts/' %}{{ primary_shortcuts.0.icon|default:'tests.svg' }}" alt="" onerror="this.remove()">
+  </span>
+  <span class="dock-btn__label">{{ primary_shortcuts.0.label|default:"Tests" }}</span>
+</a>
 
-    {# Left button (fallback: Tests) #}
-    <a href="{{ primary_shortcuts.0.href|default:'#p-tests' }}" class="dock-btn">
-      <span class="dock-btn__circle">
-        <img src="{% static 'img/shortcuts/' %}{{ primary_shortcuts.0.icon|default:'tests.svg' }}" alt=""
-             onerror="this.remove()">
-      </span>
-      <span class="dock-btn__label">{{ primary_shortcuts.0.label|default:"Tests" }}</span>
-    </a>
 
-    {# Center: opens the off-canvas menu #}
+    <!-- Center: opens the off-canvas menu -->
     <button type="button" class="dock-btn dock-btn--primary" id="dock-open">
       <span class="dock-btn__circle">
         <svg viewBox="0 0 24 24" class="w-8 h-8" fill="currentColor" aria-hidden="true">
@@ -229,11 +236,10 @@
       <span class="dock-btn__label">More</span>
     </button>
 
-    {# Right button (fallback: Prescription) #}
+    <!-- Right button (fallback: Prescription) -->
     <a href="{{ primary_shortcuts.1.href|default:'#p-msgs' }}" class="dock-btn">
       <span class="dock-btn__circle">
-        <img src="{% static 'img/shortcuts/' %}{{ primary_shortcuts.1.icon|default:'prescription.svg' }}" alt=""
-             onerror="this.remove()">
+        <img src="{% static 'img/shortcuts/' %}{{ primary_shortcuts.1.icon|default:'prescription.svg' }}" alt="" onerror="this.remove()">
       </span>
       <span class="dock-btn__label">{{ primary_shortcuts.1.label|default:"Prescription" }}</span>
     </a>
@@ -249,7 +255,6 @@
     </div>
 
     <div class="offcanvas__list">
-      {# If more_shortcuts is present, use it; else show Appointments + Messages #}
       {% if more_shortcuts %}
         {% for s in more_shortcuts %}
           <a href="{{ s.href }}" class="offcanvas__item">
@@ -260,7 +265,7 @@
           </a>
         {% endfor %}
       {% else %}
-        <a href="#p-appts" class="offcanvas__item">
+        <a href="{% url 'portal_ui:appts_list' %}" class="offcanvas__item">
           <span class="offcanvas__circle">
             <img src="{% static 'img/shortcuts/appointments.svg' %}" alt="" onerror="this.remove()">
           </span>

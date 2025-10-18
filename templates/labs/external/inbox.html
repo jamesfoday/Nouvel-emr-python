@@ -1,44 +1,6 @@
-{# templates/clinicians/partials/tests.html #}
-<div id="tests-panel" class="p-4 sm:p-6">
-  <div class="mb-3 flex items-center justify-between gap-3">
-    <!-- Search -->
-    <form
-      hx-get="{% url 'clinicians_ui:tests' clinician.pk %}"
-      hx-target="#tests-panel"
-      hx-swap="outerHTML"
-      class="relative flex-1 max-w-sm"
-    >
-      <input
-        type="search"
-        name="q"
-        value="{{ q|default:'' }}"
-        placeholder="Search tests (title, patient, email, phone)"
-        class="w-full rounded-full border border-gray-300 px-4 py-2 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-      />
-      <svg class="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none">
-        <path d="M21 21l-4.3-4.3m1.3-5.2a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" stroke="currentColor" stroke-width="2"/>
-      </svg>
-    </form>
-
-    <!-- Actions -->
-    <div class="flex items-center gap-2">
-      <a
-        href="{% url 'clinicians_ui:tests_index' clinician.pk %}"
-        class="rounded-xl border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        title="Open full tests list"
-      >See all</a>
-
-      <a
-        href="{% url 'labs_ui:order_create' clinician.pk %}"
-        class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:opacity-90"
-        title="Create test"
-      >
-        Create
-        <span class="grid h-5 w-5 place-items-center rounded-full bg-white/20 text-white">+</span>
-      </a>
-    </div>
-  </div>
-
+{% extends "base.html" %}
+{% block content %}
+<div class="mx-auto mt-6 w-full max-w-5xl px-3 sm:px-6">
   <div class="rounded-[28px] bg-emerald-50/30 ring-1 ring-white/20 shadow-xl backdrop-blur-lg p-3 sm:p-4">
     <div class="rounded-2xl border border-white/30 bg-white/60 p-4 sm:p-6 shadow-xl backdrop-blur">
       <div class="mb-4 flex items-center justify-between">
@@ -69,6 +31,7 @@
           <div class="px-4 py-14 text-center text-gray-500">No external results.</div>
         {% endfor %}
       </ul>
-    <div class="text-sm text-gray-400">No recent test results.</div>
-  {% endif %}
+    </div>
+  </div>
 </div>
+{% endblock %}

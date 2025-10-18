@@ -1,3 +1,5 @@
+{# templates/portal/panels/tests_panel.html #}
+{# Back-compat: if a legacy "tests" list is provided, render it as before #}
 {% if tests %}
   <div class="space-y-2">
     {% for t in tests %}
@@ -17,6 +19,64 @@
       </div>
     {% endfor %}
   </div>
+
 {% else %}
-  <div class="text-gray-400 text-sm">No recent test results.</div>
+  {# New: render recent Reports and Orders if present #}
+  <div class="space-y-2">
+
+    {# Reports preview #}
+    {% if reports %}
+      {% for r in reports|slice:":5" %}
+        <div class="rounded-lg border border-gray-200 p-3">
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="font-medium text-gray-900 truncate">
+                {{ r.performing_lab|default:"Diagnostic Report" }}
+              </div>
+              <div class="text-xs text-gray-500">
+                {{ r.issued_at|date:"M j, Y" }} · {{ r.status|title }}
+              </div>
+            </div>
+            {% if r.pdf %}
+              <a href="{{ r.pdf.url }}" target="_blank" class="shrink-0 text-emerald-700 text-sm underline">Download</a>
+            {% endif %}
+          </div>
+          {% with obs=r.observations.all %}
+            {% if obs %}
+              <div class="mt-2 text-xs text-gray-600 truncate">
+                {{ obs.0.name }}:
+                {% if obs.0.value_num or obs.0.value_num == 0 %}
+                  {{ obs.0.value_num }} {{ obs.0.unit }}
+                {% else %}
+                  {{ obs.0.value_text }}
+                {% endif %}
+                {% if obs|length > 1 %} · +{{ obs|length|add:"-1" }} more{% endif %}
+              </div>
+            {% endif %}
+          {% endwith %}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {# Orders preview #}
+    {% if orders %}
+      {% for o in orders|slice:":5" %}
+        <div class="rounded-lg border border-gray-200 p-3">
+          <div class="font-medium text-gray-900 truncate">
+            {{ o.catalog.name }} ({{ o.catalog.code }})
+          </div>
+          <div class="text-xs text-gray-500">
+            {{ o.ordered_at|date:"M j, Y" }} · {{ o.priority|title }} · {{ o.status|title }}
+          </div>
+          {% if o.reason %}
+            <div class="text-xs text-gray-500 mt-1 truncate">{{ o.reason }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {% if not reports and not orders %}
+      <div class="text-gray-400 text-sm">No recent test activity.</div>
+    {% endif %}
+  </div>
 {% endif %}

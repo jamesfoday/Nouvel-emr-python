@@ -2,6 +2,7 @@
 from django.urls import path
 from . import ui_views as v
 from . import ui_views as pv
+from . import ui_views as views
 
 app_name = "portal_ui"
 
@@ -45,4 +46,13 @@ urlpatterns = [
     path("documents/<int:doc_id>/", pv.doc_detail, name="doc_detail"),
     path("documents/<int:doc_id>/download/", pv.docs_download, name="docs_download"),
     path("documents/<int:doc_id>/modal/", pv.docs_view_modal, name="docs_view_modal"),
+    path("tests/", views.portal_tests_list, name="tests_list"),
+    path("dashboard/tests-panel/", v.portal_tests_panel, name="tests_panel"),
+    path("tests/order/<int:order_id>/", v.portal_tests_order_detail, name="tests_order_detail"),
+    path("tests/report/<int:report_id>/", v.portal_tests_report_detail, name="tests_report_detail"),
+    path("tests/upload/", v.portal_upload_external_result, name="tests_upload_result"),
+    path("tests/order/<int:order_id>/upload/", v.portal_upload_external_result, name="tests_upload_result_for_order"),
+    path("tests/my-uploads/", v.portal_my_results_list, name="tests_my_uploads"),
+    path("tests/my-uploads/<int:er_id>/edit/", v.portal_my_result_edit, name="tests_my_uploads_edit"),
+    path("tests/my-uploads/<int:er_id>/delete/", v.portal_my_result_delete, name="tests_my_uploads_delete"),
 ]

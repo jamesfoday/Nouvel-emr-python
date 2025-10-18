@@ -1,0 +1,71 @@
+<div id="ext-results-panel"
+     class="rounded-3xl bg-white shadow-xl ring-1 ring-black/5 backdrop-blur p-4">
+
+  <div class="flex items-center justify-between gap-2">
+    <h3 class="text-base font-semibold text-gray-900">External Results</h3>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'labs_ui:external_results_inbox' clinician.pk %}"
+         class="rounded-xl bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-800 hover:bg-gray-200">
+        See all
+      </a>
+    </div>
+  </div>
+
+  <!-- quick search (HTMX refreshes this panel only) -->
+  <form method="get" class="mt-3"
+        hx-get="{% url 'labs_ui:external_results_panel' clinician.pk %}"
+        hx-target="#ext-results-panel" hx-swap="outerHTML">
+    <div class="relative">
+      <input name="q" value="{{ q|default:'' }}" placeholder="Search title, patient, facility"
+             class="w-full rounded-2xl border border-gray-200 bg-white pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400" />
+      <svg class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
+           viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M21 21l-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </form>
+
+  {% if items %}
+    <ul class="mt-3 space-y-2">
+      {% for er in items %}
+        <li class="rounded-2xl border border-gray-100 bg-white p-3 flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="font-medium text-gray-900 truncate">
+              {{ er.title|default:"External result" }}
+            </div>
+            <div class="text-xs text-gray-600 mt-0.5">
+              {% if er.patient %}{{ er.patient.get_full_name|default:er.patient }} · {% endif %}
+              {% if er.vendor_name %}{{ er.vendor_name }} · {% endif %}
+              {{ er.created_at|date:"M j, Y" }}
+              {% if er.order %} · Order: {{ er.order.catalog.name|default:"" }}{% endif %}
+            </div>
+          </div>
+
+          <div class="shrink-0 flex items-center gap-2">
+            {% with s=er.status %}
+              {% if s == "under_review" %}
+                <span class="rounded-full bg-amber-50 text-amber-700 text-xs px-2 py-1">Under review</span>
+              {% elif s == "submitted" %}
+                <span class="rounded-full bg-blue-50 text-blue-700 text-xs px-2 py-1">Submitted</span>
+              {% elif s == "accepted" %}
+                <span class="rounded-full bg-emerald-50 text-emerald-700 text-xs px-2 py-1">Accepted</span>
+              {% elif s == "rejected" %}
+                <span class="rounded-full bg-rose-50 text-rose-700 text-xs px-2 py-1">Rejected</span>
+              {% endif %}
+            {% endwith %}
+
+            <button
+              class="rounded-xl bg-gray-900/90 px-3 py-1.5 text-xs font-semibold text-white"
+              hx-get="{% url 'labs_ui:external_result_review' clinician.pk er.id %}"
+              hx-target="#modal-root" hx-swap="innerHTML">
+              Review
+            </button>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="mt-4 text-sm text-gray-500">No external results yet.</div>
+  {% endif %}
+</div>

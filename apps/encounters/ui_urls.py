@@ -1,5 +1,6 @@
 from django.urls import path
 from . import ui_views
+from . import ui_views as v
 
 app_name = "encounters_ui"
 
@@ -12,4 +13,9 @@ urlpatterns = [
     # HTMX partials
     path("clinicians/<int:pk>/encounters/<int:eid>/save-vitals", ui_views.save_vitals, name="save_vitals"),
     path("clinicians/<int:pk>/encounters/<int:eid>/add-note", ui_views.add_note, name="add_note"),
+    path(
+        "clinicians/<int:pk>/encounters/<int:eid>/notes/<int:nid>/delete",
+        v.delete_note,
+        name="delete_note",
+    ),
 ]

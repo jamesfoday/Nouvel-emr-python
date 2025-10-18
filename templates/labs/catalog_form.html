@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mx-auto mt-6 w-full max-w-3xl px-3 sm:px-6">
+  <div class="rounded-[28px] bg-emerald-50/30 ring-1 ring-white/20 shadow-xl backdrop-blur-lg p-3 sm:p-4">
+    <div class="rounded-2xl border border-white/30 bg-white/60 p-5 sm:p-6 shadow-xl backdrop-blur">
+      <div class="mb-5 flex items-center justify-between gap-3">
+        <h1 class="text-lg sm:text-xl font-semibold text-gray-900">New Catalog Entry</h1>
+        <a href="{% url 'labs_ui:catalog_list' clinician.pk %}" class="rounded-xl bg-gray-900/90 px-3 py-1.5 text-sm font-semibold text-white">Back</a>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <label class="block">
+          <span class="block text-sm font-medium text-gray-800">Code</span>
+          {{ form.code }}
+          {% if form.code.errors %}<p class="mt-1 text-sm text-red-600">{{ form.code.errors.0 }}</p>{% endif %}
+        </label>
+
+        <label class="block mt-4">
+          <span class="block text-sm font-medium text-gray-800">Name</span>
+          {{ form.name }}
+          {% if form.name.errors %}<p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>{% endif %}
+        </label>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-800">LOINC Code (optional)</span>
+            {{ form.loinc_code }}
+          </label>
+          <label class="flex items-center gap-3 mt-6 sm:mt-8">
+            {{ form.is_panel }} <span class="text-sm font-medium text-gray-800">Is Panel</span>
+          </label>
+        </div>
+
+        <div class="mt-6 flex items-center justify-end gap-3">
+          <a href="{% url 'labs_ui:catalog_list' clinician.pk %}" class="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50">Cancel</a>
+          <button type="submit" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:brightness-95 active:brightness-90">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

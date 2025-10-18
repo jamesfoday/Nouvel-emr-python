@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="mx-auto mt-6 w-full max-w-3xl px-3 sm:px-6">
+  <div class="rounded-[28px] bg-emerald-50/30 ring-1 ring-white/20 shadow-xl backdrop-blur-lg p-3 sm:p-4">
+    <div class="rounded-2xl border border-white/30 bg-white/60 p-5 sm:p-6 shadow-xl backdrop-blur">
+      <!-- Header -->
+      <div class="mb-5 flex items-center justify-between gap-3">
+        <h1 class="text-lg sm:text-xl font-semibold text-gray-900">Record Diagnostic Report</h1>
+        <a href="{% url 'labs_ui:lab_index' clinician.pk %}"
+           class="rounded-xl bg-gray-900/90 px-3 py-1.5 text-sm font-semibold text-white">Back</a>
+      </div>
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- Patient -->
+        <label class="block">
+          <span class="block text-sm font-medium text-gray-800">Patient</span>
+          {{ form.patient }}
+          {% if form.patient.errors %}<p class="mt-1 text-sm text-red-600">{{ form.patient.errors.0 }}</p>{% endif %}
+        </label>
+
+        <!-- Status + Performing Lab -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-800">Status</span>
+            {{ form.status }}
+            {% if form.status.errors %}<p class="mt-1 text-sm text-red-600">{{ form.status.errors.0 }}</p>{% endif %}
+          </label>
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-800">Performing Lab</span>
+            {{ form.performing_lab }}
+            {% if form.performing_lab.errors %}<p class="mt-1 text-sm text-red-600">{{ form.performing_lab.errors.0 }}</p>{% endif %}
+          </label>
+        </div>
+
+        <!-- PDF -->
+        <label class="block mt-4">
+          <span class="block text-sm font-medium text-gray-800">Attach PDF (optional)</span>
+          {{ form.pdf }}
+          {% if form.pdf.errors %}<p class="mt-1 text-sm text-red-600">{{ form.pdf.errors.0 }}</p>{% endif %}
+        </label>
+
+        <!-- Actions -->
+        <div class="mt-6 flex items-center justify-end gap-3">
+          <a href="{% url 'labs_ui:lab_index' clinician.pk %}"
+             class="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50">Cancel</a>
+          <button type="submit"
+                  class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:brightness-95 active:brightness-90">
+            Save Report
+          </button>
+        </div>
+      </form>
+
+      <p class="mt-4 text-xs text-gray-500">
+        After saving, open the report to add detailed observations if your flow supports it.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

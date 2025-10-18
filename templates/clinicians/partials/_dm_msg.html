@@ -1,20 +1,22 @@
-{# Render a single message bubble. Right = clinician (me), Left = patient #}
-{% if m.from_user_id == clinician.id %}
-  <div class="flex justify-end mb-2">
-    <div class="max-w-[80%] rounded-2xl px-3 py-2 text-sm bg-emerald-600 text-white shadow">
-      <div class="whitespace-pre-wrap break-words">{{ m.body|linebreaksbr }}</div>
-      <div class="mt-1 text-[11px] opacity-80 text-right">
-        {% if m.created_at %}{{ m.created_at|date:"H:i" }}{% endif %}
+{# Render a single message bubble. Right = me (logged-in user), Left = other #}
+{% with me_id=request.user.pk|stringformat:"s" from_id=m.from_user_id|stringformat:"s" %}
+  {% if from_id == me_id %}
+    <div class="flex justify-end mb-2">
+      <div class="max-w-[80%] rounded-2xl px-3 py-2 text-sm bg-emerald-600 text-white shadow">
+        <div class="whitespace-pre-wrap break-words">{{ m.body|linebreaksbr }}</div>
+        <div class="mt-1 text-[11px] opacity-80 text-right">
+          {% if m.created_at %}{{ m.created_at|date:"H:i" }}{% endif %}
+        </div>
       </div>
     </div>
-  </div>
-{% else %}
-  <div class="flex justify-start mb-2">
-    <div class="max-w-[80%] rounded-2xl px-3 py-2 text-sm bg-gray-100 text-gray-900 shadow">
-      <div class="whitespace-pre-wrap break-words">{{ m.body|linebreaksbr }}</div>
-      <div class="mt-1 text-[11px] opacity-70">
-        {% if m.created_at %}{{ m.created_at|date:"H:i" }}{% endif %}
+  {% else %}
+    <div class="flex justify-start mb-2">
+      <div class="max-w-[80%] rounded-2xl px-3 py-2 text-sm bg-gray-100 text-gray-900 shadow">
+        <div class="whitespace-pre-wrap break-words">{{ m.body|linebreaksbr }}</div>
+        <div class="mt-1 text-[11px] opacity-70">
+          {% if m.created_at %}{{ m.created_at|date:"H:i" }}{% endif %}
+        </div>
       </div>
     </div>
-  </div>
-{% endif %}
+  {% endif %}
+{% endwith %}

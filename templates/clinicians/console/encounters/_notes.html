@@ -1,29 +1,65 @@
-<h2 class="mb-3 text-lg font-semibold">Notes</h2>
-
-<form class="mb-4 flex flex-col gap-2"
-      hx-post="{% url 'encounters_ui:add_note' clinician.pk enc.pk %}"
-      hx-target="#notes-card" hx-swap="outerHTML">
-  {% csrf_token %}
-  <div class="flex items-center gap-2">
-    <select name="kind" class="rounded-md border px-3 py-2">
-      <option value="S">Subjective</option>
-      <option value="O">Objective</option>
-      <option value="A">Assessment</option>
-      <option value="P">Plan</option>
-      <option value="N" selected>Note</option>
-    </select>
-    <button class="rounded-md bg-blue-600 px-4 py-2 text-white font-semibold">Add</button>
+{# clinicians/console/encounters/_notes.html #}
+<div id="notes-card" class="rounded-3xl bg-white/70 backdrop-blur p-5 ring-1 ring-black/5 shadow-sm">
+  <div class="mb-3 flex items-center justify-between">
+    <h2 class="text-lg font-semibold text-gray-900">Notes</h2>
   </div>
-  <textarea name="content" rows="3" class="w-full rounded-md border px-3 py-2" placeholder="Type a quick note..."></textarea>
-</form>
 
-<ul class="space-y-3">
-  {% for n in notes %}
-  <li class="rounded-lg border bg-white px-3 py-2">
-    <div class="text-sm text-gray-500">{{ n.created_at|date:"d M Y, H:i" }} · {{ n.author.get_full_name|default:n.author.username }} · {{ n.get_kind_display }}</div>
-    <div class="whitespace-pre-wrap">{{ n.content }}</div>
-  </li>
-  {% empty %}
-  <li class="text-gray-500">No notes yet.</li>
-  {% endfor %}
-</ul>
+  <form
+    class="mb-4 space-y-3"
+    hx-post="{% url 'encounters_ui:add_note' pk=enc.clinician_id eid=enc.id %}"
+    hx-target="#notes-card"
+    hx-swap="outerHTML">
+    {% csrf_token %}
+
+    <div class="flex items-center gap-2">
+      <label class="text-sm text-gray-800">Type</label>
+      <select name="kind"
+              class="rounded-xl bg-white/80 ring-1 ring-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300">
+        <option value="S">Subjective</option>
+        <option value="O">Objective</option>
+        <option value="A">Assessment</option>
+        <option value="P">Plan</option>
+        <option value="N" selected>Note</option>
+      </select>
+
+      <button type="submit"
+              class="ml-auto rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95">
+        Add
+      </button>
+    </div>
+
+    <textarea name="content" rows="3"
+              class="w-full rounded-2xl bg-white/80 ring-1 ring-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+              placeholder="Type a quick note…"></textarea>
+  </form>
+
+  <ul class="space-y-3">
+    {% for n in notes %}
+      <li class="rounded-2xl bg-white/80 ring-1 ring-gray-200 p-3 shadow-sm">
+        <div class="flex items-center justify-between text-xs text-gray-500">
+          <div class="truncate">
+            {{ n.created_at|date:"M j, Y · H:i" }}
+            · {{ n.author.get_full_name|default:n.author.username }}
+            · {{ n.get_kind_display }}
+          </div>
+          <button
+            type="button"
+            hx-post="{% url 'encounters_ui:delete_note' pk=enc.clinician_id eid=enc.id nid=n.id %}"
+            hx-confirm="Delete this note?"
+            hx-target="#notes-card"
+            hx-swap="outerHTML"
+            class="text-rose-600 hover:underline">
+            Delete
+          </button>
+        </div>
+        <div class="mt-1 whitespace-pre-wrap text-sm text-gray-800">
+          {{ n.content }}
+        </div>
+      </li>
+    {% empty %}
+      <li class="rounded-2xl bg-white/60 ring-1 ring-gray-200 p-4 text-sm text-gray-600 text-center">
+        No notes yet.
+      </li>
+    {% endfor %}
+  </ul>
+</div>

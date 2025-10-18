@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="mx-auto mt-6 w-full max-w-4xl px-3 sm:px-6">
+  <div class="rounded-[28px] bg-emerald-50/30 ring-1 ring-white/20 shadow-xl backdrop-blur-lg p-3 sm:p-4">
+    <div class="rounded-2xl border border-white/30 bg-white/60 p-4 sm:p-6 shadow-xl backdrop-blur">
+
+      <!-- Header + Search -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <h1 class="text-lg sm:text-xl font-semibold text-gray-900">Tests</h1>
+        <div class="flex items-center gap-2">
+          <a href="{% url 'portal_ui:home' %}"
+             class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:brightness-95">
+            Home
+          </a>
+                  <button
+  class="rounded-xl bg-gray-900 px-3 py-1.5 text-xs sm:text-sm font-semibold text-white hover:brightness-95"
+  hx-get="{% if o.id %}{% url 'portal_ui:tests_upload_result_for_order' o.id %}{% else %}{% url 'portal_ui:tests_upload_result' %}{% endif %}"
+  hx-target="#modal-root"
+  hx-swap="innerHTML">
+  Upload result
+</button>
+          <form method="get" class="w-full sm:w-auto">
+            <div class="relative">
+              <input type="hidden" name="tab" value="{{ tab }}">
+              <input name="q" value="{{ q }}" placeholder="Search tests"
+                     class="w-full sm:w-64 rounded-2xl border border-white/40 bg-white/60 pl-10 pr-4 py-2.5 shadow-inner outline-none placeholder:text-gray-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 backdrop-blur supports-[backdrop-filter]:bg-white/50" />
+              <svg class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M21 21l-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="mb-4 inline-flex rounded-xl bg-emerald-100/40 p-1">
+        <!-- Orders tab -->
+        <a href="?tab=orders{% if q %}&q={{ q|urlencode }}{% endif %}"
+           class="px-3 py-1.5 rounded-lg text-sm font-semibold
+                  {% if tab == 'orders' %}
+                    bg-white shadow text-emerald-700
+                  {% else %}
+                    text-emerald-800 hover:bg-white/60
+                  {% endif %}">
+          Orders
+        </a>
+
+        <!-- Reports tab -->
+        <a href="?tab=reports{% if q %}&q={{ q|urlencode }}{% endif %}"
+           class="ml-1 px-3 py-1.5 rounded-lg text-sm font-semibold
+                  {% if tab == 'reports' %}
+                    bg-white shadow text-emerald-700
+                  {% else %}
+                    text-emerald-800 hover:bg-white/60
+                  {% endif %}">
+          Reports
+        </a>
+
+    <a href="{% url 'portal_ui:tests_my_uploads' %}"
+    class="inline-flex items-center rounded-full bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-200">
+    My uploads
+    </a>
+
+
+
+      </div>
+
+      {% if tab == 'reports' %}
+        <!-- Reports List -->
+        <ul class="space-y-3">
+          {% for r in reports %}
+            <li class="rounded-2xl border border-white/30 bg-white/70 p-3 sm:p-4 shadow-xl backdrop-blur">
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="font-medium text-gray-900 truncate">
+                    {{ r.performing_lab|default:"Diagnostic Report" }}
+                  </div>
+                  <div class="text-sm text-gray-600">
+                    {{ r.issued_at|date:"D, M j Y" }} · {{ r.status|title }}
+                  </div>
+                </div>
+                <div class="shrink-0 flex items-center gap-2">
+                  {% if r.pdf %}
+                    <a href="{{ r.pdf.url }}" target="_blank"
+                       class="rounded-xl bg-gray-900/90 px-3 py-1.5 text-xs sm:text-sm font-semibold text-white hover:brightness-95">
+                      Download
+                    </a>
+                  {% endif %}
+                  <button
+                    class="rounded-xl bg-gray-900/90 px-3 py-1.5 text-xs sm:text-sm font-semibold text-white hover:brightness-95"
+                    hx-get="{% url 'portal_ui:tests_report_detail' r.id %}"
+                    hx-target="#modal-root"
+                    hx-swap="innerHTML">
+                    View
+                  </button>
+                </div>
+              </div>
+
+              {# Observations preview table (if any) #}
+              {% with obs=r.observations.all %}
+                {% if obs %}
+                  <div class="mt-2 overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                      <thead>
+                        <tr class="text-gray-500">
+                          <th class="text-left pr-2 py-1">Test</th>
+                          <th class="text-right px-2 py-1">Value</th>
+                          <th class="text-left px-2 py-1">Unit</th>
+                          <th class="text-left pl-2 py-1">Ref</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-emerald-100">
+                        {% for o in obs %}
+                          <tr>
+                            <td class="pr-2 py-1">{{ o.name }}</td>
+                            <td class="text-right px-2 py-1">
+                              {% if o.value_num or o.value_num == 0 %}
+                                {{ o.value_num }}
+                              {% else %}
+                                {{ o.value_text }}
+                              {% endif %}
+                              {% if o.flag %}
+                                {% with f=o.flag|lower %}
+                                  {% if f == 'h' or f == 'high' or f == 'critical' %}
+                                    <span class="ml-1 text-xs text-red-600">({{ o.flag }})</span>
+                                  {% elif f == 'l' or f == 'low' %}
+                                    <span class="ml-1 text-xs text-amber-600">({{ o.flag }})</span>
+                                  {% else %}
+                                    <span class="ml-1 text-xs text-gray-500">({{ o.flag }})</span>
+                                  {% endif %}
+                                {% endwith %}
+                              {% endif %}
+                            </td>
+                            <td class="px-2 py-1">{{ o.unit }}</td>
+                            <td class="pl-2 py-1">
+                              {% if o.ref_low %}{{ o.ref_low }}{% endif %}
+                              {% if o.ref_high %}– {{ o.ref_high }}{% endif %}
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                {% endif %}
+              {% endwith %}
+            </li>
+          {% empty %}
+            <div class="px-4 py-14 text-center text-gray-500">No reports yet.</div>
+          {% endfor %}
+        </ul>
+
+      {% else %}
+        <!-- Orders List -->
+        <ul class="space-y-3">
+          {% for o in orders %}
+            <li class="rounded-2xl border border-white/30 bg-white/70 p-3 sm:p-4 shadow-xl backdrop-blur flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <div class="font-medium text-gray-900 truncate">{{ o.catalog.name }} ({{ o.catalog.code }})</div>
+                <div class="text-sm text-gray-600">
+                  {{ o.ordered_at|date:"D, M j Y · H:i" }} · {{ o.priority|title }} · {{ o.status|title }}
+                </div>
+                {% if o.reason %}
+                  <div class="text-xs text-gray-500 mt-1">{{ o.reason }}</div>
+                {% endif %}
+              </div>
+
+              <button
+                class="shrink-0 rounded-xl bg-gray-900/90 px-3 py-1.5 text-xs sm:text-sm font-semibold text-white hover:brightness-95"
+                hx-get="{% url 'portal_ui:tests_order_detail' o.id %}"
+                hx-target="#modal-root"
+                hx-swap="innerHTML">
+                View
+              </button>
+            </li>
+          {% empty %}
+            <div class="px-4 py-14 text-center text-gray-500">No lab orders yet.</div>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="mx-auto mt-6 w-full max-w-7xl px-3 sm:px-6">
+  <div class="rounded-[28px] bg-emerald-50/30 ring-1 ring-white/20 shadow-xl backdrop-blur-lg p-3 sm:p-4">
+    <div class="rounded-2xl border border-white/30 bg-white/60 p-4 sm:p-6 shadow-xl backdrop-blur">
+
+      <div class="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        
+        <h1 class="text-lg sm:text-xl font-semibold tracking-tight text-gray-900">Lab</h1>
+
+
+        <div class="flex flex-wrap gap-2">
+
+           <a href="{% url 'clinicians_ui:dashboard' clinician.pk %}"
+           class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:brightness-95 active:brightness-90 cursor-pointer">
+          Home
+        </a>
+          <a href="{% url 'labs_ui:order_create' clinician.pk %}" class="rounded-xl rounded-xl bg-gray-900/90  py-1.5 text-sm font-semibold text-white px-2">+ Order</a>
+          <a href="{% url 'labs_ui:result_create' clinician.pk %}" class="rounded-xl bg-gray-900/90 px-3 py-1.5 text-sm font-semibold text-white">+ Record Result</a>
+          <a href="{% url 'labs_ui:catalog_list' clinician.pk %}"
+            class="rounded-xl bg-gray-900/90 px-3 py-1.5 text-sm font-semibold text-white">
+            Catalog
+            </a>
+
+        <a href="{% url 'labs_ui:external_results_inbox' clinician.pk %}"
+        class="inline-flex items-center rounded-xl rounded-xl bg-gray-900/90  px-3 py-1.5 text-sm font-semibold text-white hover:brightness-95">
+        External results
+        </a>
+        </div>
+      </div>
+
+      <!-- Quick lists -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- Orders -->
+        <section class="rounded-2xl bg-emerald-50/20 ring-1 ring-white/30 p-3 sm:p-4">
+          <header class="mb-2 font-semibold text-gray-800">Recent Orders</header>
+          <ul class="space-y-2">
+            {% for o in orders %}
+              <li class="rounded-xl bg-white/70 shadow p-3 backdrop-blur flex items-center justify-between">
+                <div class="min-w-0">
+                  <div class="font-medium text-gray-900 truncate">{{ o.catalog.name }} ({{ o.catalog.code }})</div>
+                  <div class="text-sm text-gray-600 truncate">{{ o.patient }} · {{ o.ordered_at|date:"M j, H:i" }} · {{ o.priority|title }} · {{ o.status|title }}</div>
+                </div>
+                <span class="ml-3 shrink-0 rounded-full bg-emerald-600/10 text-emerald-700 text-xs px-2 py-1">{{ o.status|title }}</span>
+              </li>
+            {% empty %}
+              <li class="text-sm text-gray-500 py-4 text-center">No orders yet.</li>
+            {% endfor %}
+          </ul>
+        </section>
+
+        <!-- Reports -->
+        <section class="rounded-2xl bg-emerald-50/20 ring-1 ring-white/30 p-3 sm:p-4">
+          <header class="mb-2 font-semibold text-gray-800">Recent Reports</header>
+          <ul class="space-y-2">
+            {% for r in reports %}
+              <li class="rounded-xl bg-white/70 shadow p-3 backdrop-blur">
+                <div class="font-medium text-gray-900 truncate">{{ r.performing_lab|default:"Diagnostic Report" }}</div>
+                <div class="text-sm text-gray-600 truncate">{{ r.patient }} · {{ r.issued_at|date:"M j, H:i" }} · {{ r.status|title }}</div>
+                {% if r.pdf %}<a class="text-xs text-emerald-700 underline" href="{{ r.pdf.url }}" target="_blank">Download PDF</a>{% endif %}
+              </li>
+            {% empty %}
+              <li class="text-sm text-gray-500 py-4 text-center">No reports yet.</li>
+            {% endfor %}
+          </ul>
+        </section>
+
+
+
+        <!-- Catalog -->
+        <section class="rounded-2xl bg-emerald-50/20 ring-1 ring-white/30 p-3 sm:p-4">
+          <header class="mb-2 font-semibold text-gray-800">Lab Catalog</header>
+          <ul class="space-y-2 max-h-[360px] overflow-auto pr-1">
+            {% for c in catalogs %}
+              <li class="rounded-xl bg-white/70 shadow p-3 backdrop-blur">
+                <div class="font-medium text-gray-900 truncate">{{ c.name }}</div>
+                <div class="text-sm text-gray-600 truncate">{{ c.code }}{% if c.loinc_code %} · LOINC {{ c.loinc_code }}{% endif %}{% if c.is_panel %} · Panel{% endif %}</div>
+              </li>
+            {% empty %}
+              <li class="text-sm text-gray-500 py-4 text-center">No catalog entries yet.</li>
+            {% endfor %}
+          </ul>
+        </section>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

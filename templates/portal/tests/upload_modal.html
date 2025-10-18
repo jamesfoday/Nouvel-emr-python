@@ -1,0 +1,156 @@
+<div id="external-upload-modal" class="fixed inset-0 z-50">
+  <!-- Scoped CSS just for this modal -->
+  <style>
+    /* Layout & overflow control */
+    #external-upload-modal .modal-card {
+      width: min(100%, 40rem);          /* ~640px max, never overflow viewport width */
+      max-height: 90vh;                 /* scroll body if tall */
+      display: flex;
+      flex-direction: column;
+    }
+    #external-upload-modal .modal-body {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Make all widgets truly full width (including file inputs) */
+    #external-upload-modal input,
+    #external-upload-modal select,
+    #external-upload-modal textarea {
+      width: 100% !important;
+      max-width: 100% !important;
+      background-color: #ffffff !important; /* hard white to avoid tinted layers */
+    }
+    #external-upload-modal input[type="file"] {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    /* Neutralize Safari/Chrome autofill mint */
+    #external-upload-modal input:-webkit-autofill,
+    #external-upload-modal select:-webkit-autofill,
+    #external-upload-modal textarea:-webkit-autofill {
+      -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+              box-shadow: 0 0 0 1000px #ffffff inset !important;
+      -webkit-text-fill-color: #111827 !important; /* gray-900 */
+      caret-color: #111827 !important;
+      transition: background-color 9999s ease-in-out 0s;
+    }
+
+    /* Prevent inner wrappers from constraining width */
+    #external-upload-modal .field-wrap {
+      width: 100%;
+      min-width: 0; /* allows truncation/shrink inside grid cells */
+    }
+  </style>
+
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-black/30"
+       onclick="document.getElementById('modal-root').innerHTML=''"></div>
+
+  <!-- Centered card -->
+  <div class="absolute inset-0 grid place-items-center p-4">
+    <div class="modal-card rounded-3xl border border-white/30 bg-white/95 shadow-2xl backdrop-blur">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-6 pt-6">
+        <h2 class="text-lg font-semibold text-gray-900">Upload external result</h2>
+        <button
+          class="rounded-lg bg-gray-900/90 px-2 py-1 text-xs font-semibold text-white"
+          onclick="document.getElementById('modal-root').innerHTML=''"
+          type="button"
+        >
+          Close
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body px-6 pb-4 pt-4">
+        <form
+          method="post"
+          enctype="multipart/form-data"
+          autocomplete="off"
+          class="space-y-4"
+          hx-post="{% if order %}{% url 'portal_ui:tests_upload_result_for_order' order.id %}{% else %}{% url 'portal_ui:tests_upload_result' %}{% endif %}"
+          hx-target="#modal-root"
+          hx-swap="innerHTML"
+        >
+          {% csrf_token %}
+
+          <!-- Order -->
+          <div class="field-wrap">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Attach to order (optional)</label>
+            <div class="rounded-xl border border-gray-200 bg-white p-2">
+              {{ form.order }}
+            </div>
+          </div>
+
+          <!-- Clinician -->
+          <div class="field-wrap">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Send to clinician{% if not form.order.value %} (required){% endif %}
+            </label>
+            <div class="rounded-xl border border-gray-200 bg-white p-2">
+              {{ form.clinician_to }}
+            </div>
+          </div>
+
+          <!-- Title / Facility -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="field-wrap">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <div class="rounded-xl border border-gray-200 bg-white p-2">
+                {{ form.title }}
+              </div>
+            </div>
+            <div class="field-wrap">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Facility</label>
+              <div class="rounded-xl border border-gray-200 bg-white p-2">
+                {{ form.vendor_name }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Performed at -->
+          <div class="field-wrap">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Performed at</label>
+            <div class="rounded-xl border border-gray-200 bg-white p-2">
+              {{ form.performed_at }}
+            </div>
+          </div>
+
+          <!-- File -->
+          <div class="field-wrap">
+            <label class="block text-sm font-medium text-gray-700 mb-1">File (PDF/image)</label>
+            <div class="rounded-xl border border-gray-200 bg-white p-2">
+              {{ form.file }}
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div class="field-wrap">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <div class="rounded-xl border border-gray-200 bg-white p-2">
+              {{ form.notes }}
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="mt-2 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              class="rounded-xl bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-800"
+              onclick="document.getElementById('modal-root').innerHTML=''"
+            >
+              Cancel
+            </button>
+            <button
+              class="rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:brightness-95"
+            >
+              Submit
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

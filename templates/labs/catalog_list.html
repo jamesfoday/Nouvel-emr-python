@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mx-auto mt-6 w-full max-w-5xl px-3 sm:px-6">
+  <div class="rounded-[28px] bg-emerald-50/30 ring-1 ring-white/20 shadow-xl backdrop-blur-lg p-3 sm:p-4">
+    <div class="rounded-2xl border border-white/30 bg-white/60 p-4 sm:p-6 shadow-xl backdrop-blur">
+
+      <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 class="text-lg sm:text-xl font-semibold text-gray-900">Lab Catalog</h1>
+        <form method="get" class="w-full sm:w-auto">
+          <div class="relative">
+            <input name="q" value="{{ q }}" placeholder="Search catalog"
+                   class="w-full sm:w-72 rounded-2xl border border-white/40 bg-white/60 pl-10 pr-4 py-2.5 shadow-inner outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100" />
+            <svg class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none">
+              <path d="M21 21l-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </form>
+        <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  <div class="flex items-center gap-2">
+    <a href="{% url 'labs_ui:catalog_create' clinician.pk %}"
+       class="rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white">+ New Catalog</a>
+  </div>
+</div>
+      </div>
+      <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  
+ 
+
+<ul class="space-y-2">
+  {% for c in catalogs %}
+    <li class="rounded-2xl border border-white/30 bg-white/70 p-3 shadow-xl backdrop-blur">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="font-medium text-gray-900 truncate">{{ c.name }}</div>
+          <div class="text-sm text-gray-600">
+            {{ c.code }}{% if c.loinc_code %} · LOINC {{ c.loinc_code }}{% endif %}{% if c.is_panel %} · Panel{% endif %}
+          </div>
+          {% if c.description %}<p class="mt-1 text-sm text-gray-700">{{ c.description }}</p>{% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div class="shrink-0 flex flex-wrap gap-2">
+          <a href="{% url 'labs_ui:catalog_edit' clinician.pk c.pk %}"
+             class="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs sm:text-sm font-semibold text-white hover:brightness-95">
+            Edit
+          </a>
+
+          <form method="post" action="{% url 'labs_ui:catalog_delete' clinician.pk c.pk %}"
+                onsubmit="return confirm('Delete this catalog entry?');">
+            {% csrf_token %}
+            <button type="submit"
+                    class="rounded-xl bg-red-50 px-3 py-1.5 text-xs sm:text-sm font-semibold text-red-600 hover:bg-red-100">
+              Delete
+            </button>
+          </form>
+        </div>
+      </div>
+    </li>
+  {% empty %}
+    <div class="px-4 py-14 text-center text-gray-500">No catalog entries.</div>
+  {% endfor %}
+</ul>
+
+
+      <div class="mt-6">
+        <a href="{% url 'labs_ui:lab_index' clinician.pk %}"
+           class="rounded-xl bg-gray-900/90 px-3 py-1.5 text-sm font-semibold text-white">Back to Lab</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

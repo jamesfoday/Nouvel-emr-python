@@ -1,17 +1,83 @@
-<h2 class="mb-3 text-lg font-semibold">Vitals</h2>
-<form hx-post="{% url 'encounters_ui:save_vitals' clinician.pk enc.pk %}"
-      hx-target="#vitals-card" hx-swap="outerHTML" class="grid grid-cols-2 gap-3">
-  {% csrf_token %}
-  <label class="text-sm">Systolic <input type="number" name="systolic" class="mt-1 w-full rounded-md border px-2 py-1" value="{{ vitals.systolic }}"></label>
-  <label class="text-sm">Diastolic <input type="number" name="diastolic" class="mt-1 w-full rounded-md border px-2 py-1" value="{{ vitals.diastolic }}"></label>
-  <label class="text-sm">Heart rate <input type="number" name="heart_rate" class="mt-1 w-full rounded-md border px-2 py-1" value="{{ vitals.heart_rate }}"></label>
-  <label class="text-sm">Resp. rate <input type="number" name="resp_rate" class="mt-1 w-full rounded-md border px-2 py-1" value="{{ vitals.resp_rate }}"></label>
-  <label class="text-sm">Temp (°C) <input type="number" step="0.1" name="temperature_c" class="mt-1 w-full rounded-md border px-2 py-1" value="{{ vitals.temperature_c }}"></label>
-  <label class="text-sm">SpO₂ (%) <input type="number" name="spo2" class="mt-1 w-full rounded-md border px-2 py-1" value="{{ vitals.spo2 }}"></label>
-  <label class="text-sm">Weight (kg) <input type="number" step="0.1" name="weight_kg" class="mt-1 w-full rounded-md border px-2 py-1" value="{{ vitals.weight_kg }}"></label>
-  <label class="text-sm">Height (cm) <input type="number" step="0.1" name="height_cm" class="mt-1 w-full rounded-md border px-2 py-1" value="{{ vitals.height_cm }}"></label>
+{# clinicians/console/encounters/_vitals.html #}
+<div id="vitals-card" class="rounded-3xl bg-white/70 backdrop-blur p-5 ring-1 ring-black/5 shadow-sm">
+  <h2 class="mb-4 text-lg font-semibold text-gray-900">Vitals</h2>
 
-  <div class="col-span-2 mt-2 flex justify-end">
-    <button class="rounded-md bg-blue-600 px-4 py-2 text-white font-semibold">Save vitals</button>
-  </div>
-</form>
+  <form
+    hx-post="{% url 'encounters_ui:save_vitals' pk=enc.clinician_id eid=enc.id %}"
+    hx-target="#vitals-card"
+    hx-swap="outerHTML"
+    class="grid grid-cols-1 sm:grid-cols-2 gap-4"
+  >
+    {% csrf_token %}
+
+    <label class="text-sm text-gray-800">
+      Systolic
+      <input type="number" name="systolic" min="50" max="260"
+             class="mt-1 w-full rounded-xl bg-white/80 ring-1 ring-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+             placeholder="e.g. 120"
+             value="{{ vitals.systolic|default_if_none:'' }}">
+    </label>
+
+    <label class="text-sm text-gray-800">
+      Diastolic
+      <input type="number" name="diastolic" min="30" max="180"
+             class="mt-1 w-full rounded-xl bg-white/80 ring-1 ring-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+             placeholder="e.g. 80"
+             value="{{ vitals.diastolic|default_if_none:'' }}">
+    </label>
+
+    <label class="text-sm text-gray-800">
+      Heart rate
+      <input type="number" name="heart_rate" min="20" max="250"
+             class="mt-1 w-full rounded-xl bg-white/80 ring-1 ring-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+             placeholder="bpm"
+             value="{{ vitals.heart_rate|default_if_none:'' }}">
+    </label>
+
+    <label class="text-sm text-gray-800">
+      Resp. rate
+      <input type="number" name="resp_rate" min="5" max="80"
+             class="mt-1 w-full rounded-xl bg-white/80 ring-1 ring-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+             placeholder="breaths/min"
+             value="{{ vitals.resp_rate|default_if_none:'' }}">
+    </label>
+
+    <label class="text-sm text-gray-800">
+      Temp (°C)
+      <input type="number" step="0.1" name="temperature_c" min="30" max="45"
+             class="mt-1 w-full rounded-xl bg-white/80 ring-1 ring-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+             placeholder="e.g. 36.8"
+             value="{{ vitals.temperature_c|default_if_none:'' }}">
+    </label>
+
+    <label class="text-sm text-gray-800">
+      SpO₂ (%)
+      <input type="number" name="spo2" min="50" max="100"
+             class="mt-1 w-full rounded-xl bg-white/80 ring-1 ring-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+             placeholder="%"
+             value="{{ vitals.spo2|default_if_none:'' }}">
+    </label>
+
+    <label class="text-sm text-gray-800">
+      Weight (kg)
+      <input type="number" step="0.1" name="weight_kg" min="1" max="500"
+             class="mt-1 w-full rounded-xl bg-white/80 ring-1 ring-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+             placeholder="e.g. 72.5"
+             value="{{ vitals.weight_kg|default_if_none:'' }}">
+    </label>
+
+    <label class="text-sm text-gray-800">
+      Height (cm)
+      <input type="number" step="0.1" name="height_cm" min="30" max="250"
+             class="mt-1 w-full rounded-xl bg-white/80 ring-1 ring-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+             placeholder="e.g. 178"
+             value="{{ vitals.height_cm|default_if_none:'' }}">
+    </label>
+
+    <div class="sm:col-span-2 mt-1 flex justify-end">
+      <button class="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95">
+        Save vitals
+      </button>
+    </div>
+  </form>
+</div>

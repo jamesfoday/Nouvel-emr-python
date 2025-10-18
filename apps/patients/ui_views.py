@@ -27,7 +27,9 @@ from django.utils.text import slugify
 
 from .models import Patient
 from .services import merge_into
-
+from django.db.models import Q, Value, CharField, F
+from django.db.models.functions import Concat, Coalesce, Trim
+from django.shortcuts import render
 
 def _to_int(value, default: int, *, min_value: int = 1, max_value: int | None = 100) -> int:
     try:
@@ -90,37 +92,43 @@ def patients_home(request: HttpRequest):
 
 
 @login_required
-def patients_search(request: HttpRequest):
+def patients_search(request):
     q = (request.GET.get("q") or "").strip()
-    highlight_id = _int_or_none(request.GET.get("highlight"))
-    limit = _to_int(request.GET.get("limit"), default=25, min_value=5, max_value=100)
-    offset = _to_int(request.GET.get("offset"), default=0, min_value=0, max_value=10_000)
-    tmpl = (request.GET.get("template") or "").strip().lower()
+    template = request.GET.get("template", "table")
+    limit = int(request.GET.get("limit") or 40)
 
-    base = Patient.objects.filter(is_active=True, merged_into__isnull=True)
+    patients = Patient.objects.all()
+
     if q:
-        base = base.filter(_name_q(q.split()))
+        patients = patients.filter(
+            Q(family_name__icontains=q) |
+            Q(given_name__icontains=q)  |
+            Q(email__icontains=q)       |
+            Q(phone__icontains=q)
+        )
 
-    qs = base.order_by("family_name", "given_name", "id")
-    total = qs.count()
-    rows = list(qs[offset: offset + limit])
+    # label = "Family, Given" (skip comma if one is missing), trimmed
+    fam = Coalesce(F("family_name"), Value(""))
+    giv = Coalesce(F("given_name"), Value(""))
+    comma = Value(", ")
 
-    if tmpl == "dm":
-        return render(request, "patients/_dm_search_list.html", {"patients": rows})
+    patients = patients.annotate(
+        label=Trim(
+            Coalesce(
+                Concat(fam, comma, giv, output_field=CharField()),
+                Concat(fam, giv, output_field=CharField()),
+                output_field=CharField(),
+            )
+        )
+    ).order_by("family_name", "given_name")[:limit]
 
-    ctx = {
-        "patients": rows,
-        "q": q,
-        "limit": limit,
-        "offset": offset,
-        "total": total,
-        "next_offset": offset + limit if (offset + limit) < total else None,
-        "prev_offset": offset - limit if (offset - limit) >= 0 else None,
-        "highlight_id": highlight_id,
-    }
-    return render(request, "patients/_table.html", ctx)
+    ctx = {"patients": patients}
 
-
+    if template == "dm":
+        # IMPORTANT: return the DM list partial we styled
+        return render(request, "patients/_dm_search_list.html", ctx)
+    else:
+        return render(request, "patients/_table.html", {**ctx, "q": q})
 @login_required
 def patients_create(request: HttpRequest):
     """

@@ -214,6 +214,7 @@ def dashboard(request, pk):
     patients_href = reverse("patients_ui:patients_home")
     consults_href = reverse("clinicians_ui:consultations_all", args=[clinician.pk])
     availability_href = reverse("clinicians_ui:availability_index", args=[clinician.pk])
+    lab_href = reverse("labs_ui:lab_index", args=[clinician.pk])
 
     # Prefer full â€œSee all testsâ€ page; fall back to mini-card endpoint if missing
     try:
@@ -227,8 +228,8 @@ def dashboard(request, pk):
         {"label": "Document",     "icon": "doc.svg",        "href": docs_href,     "accent": "teal"},
         {"label": "Encounter",    "icon": "people.svg",     "href": enc_href,      "accent": "teal"},
         {"label": "Patients",     "icon": "user.svg",       "href": patients_href, "accent": "teal"},
-        {"label": "Tests",        "icon": "pencil.svg",     "href": tests_href,    "accent": "red"},
         {"label": "Availability", "icon": "pencil.svg",     "href": availability_href, "accent": "red"},
+       {"label": "Lab", "icon": "pencil.svg", "href": lab_href, "accent": "red"}
     ]
 
     # Mobile dock: two primary actions + rest in off-canvas

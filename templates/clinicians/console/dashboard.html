@@ -16,11 +16,10 @@
       </div>
 
       <a
-  href="{% url 'clinicians_ui:edit_profile' clinician.pk %}"
-  class="mt-3 inline-block text-emerald-900/90 bg-white/90 hover:bg-white px-4 py-1.5 rounded-full text-sm font-medium">
-  edit
-</a>
-
+        href="{% url 'clinicians_ui:edit_profile' clinician.pk %}"
+        class="mt-3 inline-block text-emerald-900/90 bg-white/90 hover:bg-white px-4 py-1.5 rounded-full text-sm font-medium">
+        edit
+      </a>
 
       <div class="text-4xl font-extrabold tracking-tight mt-6">
         Dr {{ clinician.get_full_name|default:clinician.username|title }}
@@ -31,20 +30,20 @@
     <div class="lg:col-span-2">
       <div class="bg-white rounded-2xl p-4 ring-1 ring-black/5 h-full min-h-[360px] flex flex-col consultation-shell">
         <div class="flex items-center justify-between mb-3">
-          <div class=" hidden sm:block text-lg font-semibold">Consultation</div>
+          <div class="hidden sm:block text-lg font-semibold">Consultation</div>
           <div class="text-xs text-gray-500">Next 48h</div>
-           <div class="flex items-center justify-between gap-3 mb-3">
-       <div class="flex items-center gap-2">
-        <a href="{% url 'clinicians_ui:consultations_all' clinician.pk %}"
-           class="inline-flex items-center rounded-xl bg-gray-200/70 px-3 py-1.5 text-sm font-medium text-gray-800">
-          See all
-        </a>
-        <a href="{% url 'appointments_ui:console_new_appointment' %}?clinician={{ clinician.pk }}"
-           class="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-900">
-          Create <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-white">+</span>
-        </a>
-      </div>
-    </div>
+          <div class="flex items-center justify-between gap-3 mb-3 sm:mb-0">
+            <div class="flex items-center gap-2">
+              <a href="{% url 'clinicians_ui:consultations_all' clinician.pk %}"
+                 class="inline-flex items-center rounded-xl bg-gray-200/70 px-3 py-1.5 text-sm font-medium text-gray-800">
+                See all
+              </a>
+              <a href="{% url 'appointments_ui:console_new_appointment' %}?clinician={{ clinician.pk }}"
+                 class="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-900">
+                Create <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-white">+</span>
+              </a>
+            </div>
+          </div>
         </div>
 
         <div id="upcoming-body"
@@ -57,15 +56,15 @@
       </div>
     </div>
 
-    {# -- Tests -------------------------------------------------------------- #}
-    <div class="bg-white rounded-2xl p-4 ring-1 ring-black/5">
-      <div class="text-center font-semibold mb-2">Test</div>
-      <div id="tests"
-           hx-get="{% url 'clinicians_ui:tests' clinician.pk %}"
-           hx-trigger="load, every 60s"
-           hx-swap="innerHTML">
-        <div class="text-gray-400 text-sm">Loading…</div>
-      </div>
+    {# -- Tests (External results panel) ------------------------------------ #}
+    <div
+      hx-get="{% url 'labs_ui:external_results_panel' request.user.pk %}"
+      hx-trigger="load, ext-results-refresh from:body"
+      hx-target="this"
+      hx-swap="outerHTML"
+      class="rounded-3xl bg-white/60 ring-1 ring-black/5 p-4 min-h-[140px]"
+    >
+      Loading external results…
     </div>
 
     {# -- Shortcuts (desktop/tablet panel) ---------------------------------- #}
@@ -87,20 +86,13 @@
       </div>
     </div>
 
-    {# -- Inbox / DM --------------------------------------------------------- #}
+    {# -- Direct Messages ONLY ---------------------------------------------- #}
     <div class="lg:col-span-3 bg-white rounded-2xl p-0 ring-1 ring-black/5">
-      <div class="flex border-b">
-        <button class="px-4 py-2 font-medium"
-                hx-get="{% url 'clinicians_ui:inbox' clinician.pk %}"
-                hx-target="#mail"
-                hx-swap="innerHTML">Inbox</button>
-        <button class="px-4 py-2 text-gray-500"
-                hx-get="{% url 'clinicians_ui:direct_messages' clinician.pk %}"
-                hx-target="#mail"
-                hx-swap="innerHTML">Direct Message</button>
+      <div class="px-4 py-3 border-b">
+        <h2 class="text-lg font-semibold">Direct Messages</h2>
       </div>
       <div id="mail" class="p-4"
-           hx-get="{% url 'clinicians_ui:inbox' clinician.pk %}"
+           hx-get="{% url 'clinicians_ui:direct_messages' clinician.pk %}"
            hx-trigger="load"
            hx-swap="innerHTML">
         <div class="text-gray-400 text-sm p-2">Loading…</div>
@@ -111,7 +103,7 @@
 </div>
 
 {# ------------------------- Mobile dock ----------------------------------- #}
-<div class="mobile-dock md:hidden">
+<div class="mobile-dock md:hidden ">
   <div class="mobile-dock__row">
     <a href="{{ primary_shortcuts.0.href }}" class="dock-btn">
       <span class="dock-btn__circle">
