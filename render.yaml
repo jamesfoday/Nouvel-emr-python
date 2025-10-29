@@ -13,7 +13,9 @@ services:
       pip install -r requirements.txt
       python manage.py collectstatic --noinput
       python manage.py migrate --noinput
+      # Create superuser if not exists
       python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); import os; u=os.environ.get('DJANGO_SUPERUSER_EMAIL'); p=os.environ.get('DJANGO_SUPERUSER_PASSWORD'); User.objects.filter(email=u).exists() or User.objects.create_superuser(u, u, p)"
+      # Production safety checks
       python manage.py check --deploy --fail-level WARNING
     startCommand: gunicorn config.wsgi:application --workers=${WEB_CONCURRENCY:-2} --bind 0.0.0.0:10000
     envVars:
@@ -123,6 +125,8 @@ services:
   - type: redis
     name: nouvel-redis
     plan: free
+    ipAllowList:
+      - source: 0.0.0.0/0   # allow all (simplest). tighten later to specific CIDRs if needed.
 
 # --- PostgreSQL Database ---------------------------------------------
 databases:
