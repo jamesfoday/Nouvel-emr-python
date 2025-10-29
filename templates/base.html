@@ -237,14 +237,14 @@
 
           <div class="p-5 space-y-3">
             <!-- Patient -->
-            <a href="http://127.0.0.1:8000/login/"
+            <a  href="{% url 'login' %}"
                class="w-full inline-flex items-center justify-between rounded-xl bg-emerald-600 text-white px-4 py-3 font-semibold hover:bg-emerald-700 active:scale-[.99] focus:outline-none focus:ring-2 focus:ring-emerald-300">
               <span>Patient Portal</span>
               <span aria-hidden="true">›</span>
             </a>
 
             <!-- Clinician -->
-            <a href="http://127.0.0.1:8000/clinician/login/"
+            <a href="{% url 'clinician_login' %}"
                class="w-full inline-flex items-center justify-between rounded-xl bg-white ring-1 ring-emerald-900/15 text-emerald-900 px-4 py-3 font-semibold hover:bg-emerald-50 active:scale-[.99] focus:outline-none focus:ring-2 focus:ring-emerald-300">
               <span>Clinician Console</span>
               <span aria-hidden="true">›</span>
@@ -252,7 +252,7 @@
             {# If you prefer /console/login/ instead, swap the href above #}
 
             <!-- Reception -->
-            <a href="http://127.0.0.1:8000/reception/login/"
+            <a href="{% url 'reception_login' %}"
                class="w-full inline-flex items-center justify-between rounded-xl bg-white ring-1 ring-emerald-900/15 text-emerald-900 px-4 py-3 font-semibold hover:bg-emerald-50 active:scale-[.99] focus:outline-none focus:ring-2 focus:ring-emerald-300">
               <span>Reception Desk</span>
               <span aria-hidden="true">›</span>
