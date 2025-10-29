@@ -1,6 +1,6 @@
 # ---------------------------------------------------------------------
-# Render Blueprint for Nouvel-EMR — Free plan friendly
-# Web service + Postgres. Celery runs eagerly (no worker/beat needed).
+# Render Blueprint for Nouvel-EMR — Free plan
+# Web + Postgres; Celery runs eagerly in-process.
 # ---------------------------------------------------------------------
 
 services:
@@ -13,36 +13,32 @@ services:
       pip install -r requirements.txt
       python manage.py collectstatic --noinput
       python manage.py migrate --noinput
-      # Create superuser if not exists
-      python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); import os; u=os.environ.get('DJANGO_SUPERUSER_EMAIL'); p=os.environ.get('DJANGO_SUPERUSER_PASSWORD'); User.objects.filter(email=u).exists() or User.objects.create_superuser(u, u, p)"
-      # Production safety checks
+      # Create superuser if missing (works with custom USERNAME_FIELD=email)
+      python manage.py createsuperuser --noinput || true
+      # Production safety checks (after deps installed)
       python manage.py check --deploy --fail-level WARNING
+    # Render provides $PORT; bind to it
     startCommand: gunicorn config.wsgi:application --workers=${WEB_CONCURRENCY:-2} --bind 0.0.0.0:$PORT
     envVars:
-      # Django settings module (prod)
       - key: DJANGO_SETTINGS_MODULE
         value: config.prod
 
-      # IMPORTANT: your settings expect DJANGO_SECRET_KEY
+      # Your settings read DJANGO_SECRET_KEY
       - key: DJANGO_SECRET_KEY
         generateValue: true
 
       - key: DJANGO_DEBUG
         value: False
 
-      # Hosts / CSRF
       - key: DJANGO_ALLOWED_HOSTS
         value: nouvel-emr.onrender.com,.onrender.com
       - key: DJANGO_CSRF_TRUSTED_ORIGINS
         value: https://nouvel-emr.onrender.com,https://*.onrender.com
 
-      # Proxy / timezone
       - key: USE_X_FORWARDED_PROTO
         value: True
       - key: DJANGO_TIME_ZONE
         value: Europe/Paris
-
-      # Python / workers
       - key: PYTHON_VERSION
         value: 3.13.0
       - key: WEB_CONCURRENCY
@@ -54,11 +50,13 @@ services:
           name: nouvel-postgres
           property: connectionString
 
-      # Celery eager mode (matches your base.py default, but we enforce for clarity)
+      # Celery eager (no worker on free plan)
       - key: CELERY_TASK_ALWAYS_EAGER
         value: True
 
-      # Auto superuser
+      # Non-interactive superuser vars expected by Django
+      - key: DJANGO_SUPERUSER_USERNAME
+        value: admin@nouvel-emr.com
       - key: DJANGO_SUPERUSER_EMAIL
         value: admin@nouvel-emr.com
       - key: DJANGO_SUPERUSER_PASSWORD
