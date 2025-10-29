@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="mx-auto max-w-4xl">
+  {% csrf_token %}
+  {{ formset.management_form }}
+  {% for hf in form.hidden_fields %}{{ hf }}{% endfor %}
+
+  <div class="p-6 sm:p-8 rounded-3xl bg-emerald-50 ring-1 ring-emerald-100 space-y-6">
+    <h1 class="text-center text-2xl font-semibold text-emerald-800">
+      {% if is_create %}Create a Service{% else %}Edit Service{% endif %}
+    </h1>
+
+    {# =================== Upload area with inline thumbnail preview =================== #}
+    <div id="drop-wrap"
+         class="relative"
+         data-initial-url="{% if form.instance.hero_image %}{{ form.instance.hero_image.url }}{% endif %}">
+
+      {# Real file input (visually hidden, still focusable/label-clickable) #}
+      <input
+        type="file"
+        name="{{ form.hero_image.html_name }}"
+        id="{{ form.hero_image.id_for_label }}"
+        accept="image/*"
+        class="sr-only"
+        aria-label="Upload service hero image"
+      />
+
+      {# Hidden clear field for Django (imitates ClearableFileInput) #}
+      <input type="hidden"
+             id="hero-clear"
+             name="{{ form.hero_image.html_name }}-clear"
+             value="">
+
+      {# Visual dropzone (label opens picker). The preview sits INSIDE this card. #}
+      <label for="{{ form.hero_image.id_for_label }}"
+             id="dropzone"
+             class="block rounded-2xl p-6 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white/90 shadow-inner cursor-pointer select-none"
+             ondragover="event.preventDefault(); this.classList.add('ring-4','ring-white/60')"
+             ondragleave="this.classList.remove('ring-4','ring-white/60')"
+             ondrop="handleDrop(event)">
+
+        <div class="border-2 border-dashed border-white/60 rounded-xl h-36 grid place-items-center relative overflow-hidden">
+
+          {# Empty state (icon + text). Hidden when preview is visible. #}
+          <div id="dz-empty" class="text-center" style="display:flex; flex-direction:column; align-items:center;">
+            <div class="mx-auto mb-1 w-8 h-8">
+              <svg viewBox="0 0 24 24" fill="none" class="w-8 h-8" aria-hidden="true">
+                <path stroke="currentColor" stroke-width="1.5" d="M7 17h9a4 4 0 0 0 0-8 5 5 0 0 0-9.6-1.2A3.5 3.5 0 0 0 7 17Z"/>
+                <path fill="currentColor" d="M12 8.75a.75.75 0 0 1 .75.75v4.19l1.22-1.22a.75.75 0 1 1 1.06 1.06l-2.5 2.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.75.75 0 0 1 1.06-1.06l1.22 1.22V9.5a.75.75 0 0 1 .75-.75Z"/>
+              </svg>
+            </div>
+            <div id="dz-label" class="text-sm font-medium">
+              {% if form.instance.hero_image %}{{ form.instance.hero_image.name|default:"Upload image" }}{% else %}Upload image{% endif %}
+            </div>
+            <div class="text-xs opacity-90">Click or drag & drop</div>
+          </div>
+
+          {# Inline preview container (centered). Hidden by default. #}
+          <div id="preview-wrap"
+               class="flex items-center justify-center"
+               style="display:none;">
+            <div class="relative">
+              <img id="preview-img"
+                   src=""
+                   alt="Selected image preview"
+                   class="w-28 h-28 rounded-full object-cover ring-4 ring-white shadow-md" />
+              <button type="button"
+                      id="btn-clear-image"
+                      class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white text-emerald-700 shadow grid place-items-center text-sm font-bold"
+                      aria-label="Remove image"
+                      onclick="event.preventDefault(); event.stopPropagation(); clearPreview();">×</button>
+            </div>
+          </div>
+
+        </div>
+      </label>
+    </div>
+
+    {% if form.hero_image.errors %}
+      <p class="text-red-600 text-sm mt-1">{{ form.hero_image.errors|join:", " }}</p>
+    {% endif %}
+
+    {# =============================== Title =================================== #}
+    <div>
+      {{ form.title }}
+      {% if form.title.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ form.title.errors|join:", " }}</p>
+      {% endif %}
+    </div>
+
+    {# ============================== Sections ================================= #}
+    <div class="rounded-2xl bg-white shadow ring-1 ring-gray-200">
+      <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+        <div class="text-lg font-semibold text-gray-700">Section</div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btn-add-section"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 text-white hover:bg-emerald-700"
+                  aria-label="Add section">+</button>
+          <button type="button" id="btn-remove-section"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                  aria-label="Remove last section">−</button>
+        </div>
+      </div>
+
+      <div id="sections-container" class="p-4 space-y-4">
+        {% for f in formset.forms %}
+          <div class="rounded-xl ring-1 ring-gray-200 bg-gray-50/50 p-4 space-y-3 section-item">
+            {{ f.subtitle }}
+            {{ f.description }}
+            {{ f.order }}
+            <input type="hidden" name="{{ f.heading.html_name }}" value="{{ f.heading.value|default:'Section' }}">
+            {% for hf in f.hidden_fields %}{{ hf }}{% endfor %}
+            {% if f.DELETE %}{{ f.DELETE }}{% endif %}
+          </div>
+        {% empty %}
+          {# nothing rendered; JS will inject the first form from the template #}
+        {% endfor %}
+      </div>
+    </div>
+
+    {# ============================== Actions ================================== #}
+    <div class="flex flex-col sm:flex-row gap-3 justify-end">
+      <a href="{% url 'services:list' %}"
+         class="inline-flex items-center justify-center rounded-xl px-5 py-2.5 font-semibold ring-1 ring-gray-300 bg-white text-gray-700 hover:bg-gray-50">
+        Cancel
+      </a>
+      <button type="submit"
+              class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-white font-semibold hover:bg-emerald-700">
+        {% if is_create %}Create{% else %}Update{% endif %}
+      </button>
+    </div>
+  </div>
+
+  {# Template for new section #}
+  <template id="section-template">
+    <div class="rounded-xl ring-1 ring-gray-200 bg-gray-50/50 p-4 space-y-3 section-item">
+      <input type="text"
+             name="{{ formset.empty_form.subtitle.html_name|escape }}"
+             placeholder="sub title"
+             class="w-full rounded-xl bg-white px-3 py-3 ring-1 ring-gray-200 focus:ring-emerald-500" />
+
+      <textarea name="{{ formset.empty_form.description.html_name|escape }}"
+                rows="6"
+                placeholder="Description"
+                class="w-full rounded-xl bg-white px-3 py-3 ring-1 ring-gray-200 focus:ring-emerald-500"></textarea>
+
+      <input type="number"
+             name="{{ formset.empty_form.order.html_name|escape }}"
+             value="{{ formset.empty_form.order.value|default:0 }}"
+             class="w-full rounded-xl bg-white px-3 py-3 ring-1 ring-gray-200 focus:ring-emerald-500" />
+
+      <input type="hidden"
+             name="{{ formset.empty_form.heading.html_name|escape }}"
+             value="Section" />
+
+      {% for hf in formset.empty_form.hidden_fields %}{{ hf.as_widget }}{% endfor %}
+      {% if formset.empty_form.DELETE %}{{ formset.empty_form.DELETE }}{% endif %}
+    </div>
+  </template>
+</form>
+
+<script>
+  // ========== Preview helpers =================================================
+  function showPreviewUI() {
+    const p = document.getElementById('preview-wrap');
+    const empty = document.getElementById('dz-empty');
+    if (p) p.style.display = 'flex';
+    if (empty) empty.style.display = 'none';
+  }
+  function hidePreviewUI() {
+    const p = document.getElementById('preview-wrap');
+    const empty = document.getElementById('dz-empty');
+    if (p) p.style.display = 'none';
+    if (empty) empty.style.display = 'flex';
+  }
+
+  function setPreviewFromFile(file) {
+    if (!file) return;
+    // Use FileReader for Safari reliability
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = document.getElementById('preview-img');
+        if (img) img.src = e.target.result;
+        const clear = document.getElementById('hero-clear');
+        const labelTxt = document.getElementById('dz-label');
+        if (clear) clear.value = "";           // not clearing anymore
+        if (labelTxt) labelTxt.textContent = "Change image";
+        showPreviewUI();
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      const url = URL.createObjectURL(file);
+      setPreviewURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 8000);
+    }
+  }
+
+  function setPreviewURL(url) {
+    const img = document.getElementById('preview-img');
+    const clear = document.getElementById('hero-clear');
+    const labelTxt = document.getElementById('dz-label');
+    if (img && url) {
+      img.src = url;
+      if (clear) clear.value = "";
+      if (labelTxt) labelTxt.textContent = "Change image";
+      showPreviewUI();
+    }
+  }
+
+  function clearPreview() {
+    const fileInput = document.getElementById('{{ form.hero_image.id_for_label }}');
+    const img  = document.getElementById('preview-img');
+    const clear = document.getElementById('hero-clear');
+    const labelTxt = document.getElementById('dz-label');
+
+    if (fileInput) fileInput.value = "";
+    if (img) img.removeAttribute('src');
+    if (clear) clear.value = "on";            // tell Django to clear existing image
+    if (labelTxt) labelTxt.textContent = "Upload image";
+    hidePreviewUI();
+  }
+
+  // ========== Init & events ===================================================
+  (function(){
+    const fileInput  = document.getElementById('{{ form.hero_image.id_for_label }}');
+    const initialUrl = document.getElementById('drop-wrap')?.dataset?.initialUrl;
+
+    // Existing image on edit
+    if (initialUrl) setPreviewURL(initialUrl);
+
+    // Change (picker selection)
+    fileInput?.addEventListener('change', function(){
+      if (this.files && this.files[0]) setPreviewFromFile(this.files[0]);
+    });
+  })();
+
+  // ========== Drag & drop onto the label ====================================
+  function handleDrop(e){
+    e.preventDefault();
+    const fileInput = document.getElementById('{{ form.hero_image.id_for_label }}');
+    if (e.dataTransfer?.files?.length) {
+      const file = e.dataTransfer.files[0];
+      if (fileInput) fileInput.files = e.dataTransfer.files; // keep form submit normal
+      setPreviewFromFile(file);
+    }
+    const dz = document.getElementById('dropzone');
+    dz && dz.classList.remove('ring-4','ring-white/60');
+  }
+
+  // ========== Sections add/remove (unchanged) ================================
+  (function(){
+    const container = document.getElementById('sections-container');
+    const addBtn = document.getElementById('btn-add-section');
+    const removeBtn = document.getElementById('btn-remove-section');
+    const tmpl = document.getElementById('section-template').innerHTML;
+
+    const prefix = "{{ formset.prefix }}";
+    const totalInput = document.querySelector(`input[name="${prefix}-TOTAL_FORMS"]`);
+    const maxInput   = document.querySelector(`input[name="${prefix}-MAX_NUM_FORMS"]`);
+    const emptyPrefix = '__prefix__';
+
+    function currentTotal(){ return parseInt(totalInput?.value || '0', 10); }
+    function maxForms(){ return parseInt(maxInput?.value || '1000', 10); }
+
+    function addOne(){
+      if (currentTotal() >= maxForms()) return;
+      const idx = currentTotal();
+      const html = tmpl
+        .replaceAll(`${prefix}-${emptyPrefix}`, `${prefix}-${idx}`)
+        .replaceAll(`-${emptyPrefix}-`, `-${idx}-`)
+        .replaceAll(`[${emptyPrefix}]`, `[${idx}]`);
+      const div = document.createElement('div');
+      div.innerHTML = html.trim();
+      container.appendChild(div.firstElementChild);
+      if (totalInput) totalInput.value = idx + 1;
+    }
+
+    function removeLast(){
+      const items = container.querySelectorAll('.section-item');
+      if (!items.length) return;
+      items[items.length - 1].remove();
+      if (totalInput) totalInput.value = Math.max(0, currentTotal() - 1);
+      if (!container.querySelector('.section-item') && currentTotal() === 0) addOne();
+    }
+
+    addBtn && addBtn.addEventListener('click', addOne);
+    removeBtn && removeBtn.addEventListener('click', removeLast);
+
+    // Ensure at least one section exists
+    if (!container.querySelector('.section-item') && currentTotal() === 0) addOne();
+  })();
+</script>
+{% endblock %}

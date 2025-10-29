@@ -1,0 +1,40 @@
+{% load rbac_tags %}
+
+<tr  class="border-t border-slate-200/70" id="patient-row-{{ p.pk }}">
+  <td class="py-2 pr-2 font-medium">
+    {{ p.family_name }}, {{ p.given_name }}
+    {% if p.external_id %}<span class="text-xs text-slate-500 ml-1">({{ p.external_id }})</span>{% endif %}
+  </td>
+  <td class="py-2 pr-2">{{ p.email|default:"—" }}</td>
+  <td class="py-2 pr-2">{{ p.phone|default:"—" }}</td>
+  <td class="py-2 pr-2">
+    {% if p.primary_clinician %}
+      {{ p.primary_clinician.get_full_name|default:p.primary_clinician.username }}
+    {% elif p.clinicians.all %}
+      {% with first=p.clinicians.first %}
+        {% if first %}{{ first.get_full_name|default:first.username }}{% else %}—{% endif %}
+      {% endwith %}
+    {% else %}—{% endif %}
+  </td>
+  <td class="py-2 pr-2">
+    {% if p.is_active %}
+      <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs">Active</span>
+    {% else %}
+      <span class="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-xs">Inactive</span>
+    {% endif %}
+  </td>
+  <td class="py-2 text-right space-x-2">
+  <a href="{% url_or 'patients_ui:detail' p.pk default='#' %}" class="...">View</a>
+<a href="{% url_or 'patients_ui:edit'   p.pk default='#' %}" class="...">Edit</a>
+
+
+    <!-- Inline toggle with HTMX -->
+  <button
+  hx-post="{% absurl_or 'patients_ui:reception_patient_toggle_active' p.pk default='#' %}"
+  hx-target="closest tr"
+  hx-swap="outerHTML"
+  class="...">
+  {% if p.is_active %}Deactivate{% else %}Activate{% endif %}
+</button>
+  </td>
+</tr>

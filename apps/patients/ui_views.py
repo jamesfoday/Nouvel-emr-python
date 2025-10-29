@@ -11,7 +11,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordResetForm
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import EmailMultiAlternatives
-from django.db.models import Q
+from django.db.models import Q, Value, CharField, F
+from django.db.models.functions import Concat, Coalesce, Trim
 from django.http import (
     HttpRequest,
     HttpResponseBadRequest,
@@ -19,18 +20,24 @@ from django.http import (
     JsonResponse,
 )
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.encoding import force_bytes
 from django.utils.html import strip_tags
 from django.utils.http import urlsafe_base64_encode
 from django.utils.text import slugify
+from django.apps import apps
 
 from .models import Patient
 from .services import merge_into
-from django.db.models import Q, Value, CharField, F
-from django.db.models.functions import Concat, Coalesce, Trim
-from django.shortcuts import render
 
+# RBAC helpers (plain-Django)
+from apps.rbac.utils import has_role
+
+
+# -------------------------
+# Internal helpers
+# -------------------------
 def _to_int(value, default: int, *, min_value: int = 1, max_value: int | None = 100) -> int:
     try:
         i = int(value)
@@ -42,11 +49,13 @@ def _to_int(value, default: int, *, min_value: int = 1, max_value: int | None = 
         i = max_value
     return i
 
+
 def _int_or_none(v):
     try:
         return int(v)
     except (TypeError, ValueError):
         return None
+
 
 def _name_q(terms: list[str]) -> Q:
     cond = Q()
@@ -60,6 +69,7 @@ def _name_q(terms: list[str]) -> Q:
         )
     return cond
 
+
 def _unique_username_from_email_or_name(email: str, given: str, family: str) -> str:
     User = get_user_model()
     base = (email.split("@")[0] if email else "").strip() or slugify(f"{given}.{family}") or "user"
@@ -71,6 +81,69 @@ def _unique_username_from_email_or_name(email: str, given: str, family: str) -> 
     return candidate
 
 
+def _assign_patient_to_clinician(patient: Patient, clinician) -> None:
+    """
+    Link Patient -> Clinician using whatever relation you already have.
+    Supports:
+      1) FK patient.primary_clinician
+      2) M2M patient.clinicians.add(user)
+      3) Through models like PatientClinician / PatientAssignment
+    """
+    # FK
+    if hasattr(patient, "primary_clinician_id"):
+        patient.primary_clinician = clinician
+        patient.save(update_fields=["primary_clinician"])
+        return
+
+    # M2M
+    if hasattr(patient, "clinicians"):
+        try:
+            patient.clinicians.add(clinician)
+            return
+        except Exception:
+            pass
+
+    # Through model (heuristic)
+    for app_label, model_name in [
+        ("patients", "PatientClinician"),
+        ("patients", "PatientAssignment"),
+        ("clinicians", "PatientClinician"),
+        ("clinicians", "PatientAssignment"),
+    ]:
+        try:
+            Link = apps.get_model(app_label, model_name)
+        except LookupError:
+            continue
+
+        fields = {f.name for f in Link._meta.get_fields()}
+        kwargs = {}
+        if "patient" in fields:
+            kwargs["patient"] = patient
+        if "clinician" in fields:
+            kwargs["clinician"] = clinician
+        if kwargs:
+            Link.objects.get_or_create(**kwargs)
+            return
+
+
+def _require_reception(request) -> bool:
+    """
+    Reception access gate:
+      - staff
+      - has ANY of these roles: reception, receptionist, frontdesk (names normalized by RBAC)
+      - superuser always allowed (via has_role default)
+    """
+    return (getattr(request.user, "is_staff", False)
+            and has_role(request.user, "reception", "receptionist", "frontdesk"))
+
+
+def _is_htmx(request: HttpRequest) -> bool:
+    return request.headers.get("HX-Request") == "true"
+
+
+# -------------------------
+# Console / Global (existing)
+# -------------------------
 @login_required
 def console_home(request: HttpRequest):
     return render(request, "console/console.html")
@@ -107,7 +180,6 @@ def patients_search(request):
             Q(phone__icontains=q)
         )
 
-    # label = "Family, Given" (skip comma if one is missing), trimmed
     fam = Coalesce(F("family_name"), Value(""))
     giv = Coalesce(F("given_name"), Value(""))
     comma = Value(", ")
@@ -125,10 +197,14 @@ def patients_search(request):
     ctx = {"patients": patients}
 
     if template == "dm":
-        # IMPORTANT: return the DM list partial we styled
         return render(request, "patients/_dm_search_list.html", ctx)
     else:
         return render(request, "patients/_table.html", {**ctx, "q": q})
+
+
+# -------------------------
+# Patient create (global staff)
+# -------------------------
 @login_required
 def patients_create(request: HttpRequest):
     """
@@ -260,9 +336,12 @@ def patients_create(request: HttpRequest):
     return render(request, "patients/create.html")
 
 
+# -------------------------
+# Login link (existing; must build absolute URL for email)
+# -------------------------
 @login_required
 def patients_login_link(request: HttpRequest, pk: int):
-    if not (request.user.is_staff or request.user.is_superuser):
+    if not (request.user.is_superuser or request.user.is_staff):
         return HttpResponseForbidden("Not allowed.")
 
     patient = get_object_or_404(Patient, pk=pk)
@@ -284,7 +363,7 @@ def patients_login_link(request: HttpRequest, pk: int):
     uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
     token = PasswordResetTokenGenerator().make_token(user)
     path = reverse("password_reset_confirm", kwargs={"uidb64": uidb64, "token": token})
-    link = request.build_absolute_uri(path)
+    link = request.build_absolute_uri(path)  # <-- intentionally absolute for email
 
     if hasattr(patient, "user_id") and not patient.user_id:
         try:
@@ -296,6 +375,9 @@ def patients_login_link(request: HttpRequest, pk: int):
     return JsonResponse({"link": link})
 
 
+# -------------------------
+# Merge (existing)
+# -------------------------
 @login_required
 def merge_confirm(request: HttpRequest):
     primary_id = request.GET.get("primary")
@@ -343,6 +425,9 @@ def merge_execute(request: HttpRequest):
         return redirect("patients_ui:patients_home")
 
 
+# -------------------------
+# Detail / Edit / Deactivate (existing)
+# -------------------------
 @login_required
 def patient_detail(request: HttpRequest, pk: int):
     patient = get_object_or_404(Patient, pk=pk)
@@ -432,6 +517,9 @@ def patients_deactivate(request: HttpRequest, pk: int):
     return redirect("patients_ui:patients_home")
 
 
+# -------------------------
+# Pick list (existing)
+# -------------------------
 @login_required
 def pick_list(request: HttpRequest):
     q = (request.GET.get("q") or "").strip()
@@ -440,3 +528,187 @@ def pick_list(request: HttpRequest):
         base = base.filter(_name_q(q.split()))
     rows = base.order_by("family_name", "given_name", "id")[:50]
     return render(request, "patients/_pick_list.html", {"patients": rows})
+
+
+# ======================================================================
+# RECEPTION: see-all + create-and-assign + activate/deactivate + HTMX
+# ======================================================================
+@login_required
+def reception_patients_list(request: HttpRequest):
+    """
+    Reception can see all patients assigned to clinicians (or all, if no direct link exists).
+    HTMX: returns rows partial when HX-Request.
+    NOTE: uses only relative paths (reverse / {% url %}) — no absolute URLs here.
+    """
+    if not _require_reception(request):
+        messages.error(request, "Not allowed.")
+        return redirect("home")
+
+    q = (request.GET.get("q") or "").strip()
+    base = Patient.objects.all()
+
+    # Prefer “patients assigned to any clinician”
+    if hasattr(Patient, "primary_clinician_id"):
+        base = base.filter(primary_clinician__isnull=False)
+    elif hasattr(Patient, "clinicians"):
+        base = base.filter(clinicians__isnull=False).distinct()
+
+    if q:
+        base = base.filter(
+            Q(family_name__icontains=q) |
+            Q(given_name__icontains=q)  |
+            Q(email__icontains=q)       |
+            Q(phone__icontains=q)
+        )
+
+    patients = base.order_by("family_name", "given_name", "id")[:200]
+    ctx = {"patients": patients, "q": q}
+
+    # HTMX partial for tbody updates
+    if _is_htmx(request):
+        if request.GET.get("view") == "cards":
+            return TemplateResponse(request, "reception/_patients_cards.html", ctx)
+        return TemplateResponse(request, "reception/_patients_rows.html", ctx)
+
+    return render(request, "reception/patients_list.html", ctx)
+
+
+@login_required
+def reception_patient_toggle_active(request: HttpRequest, pk: int):
+    """
+    Toggle is_active for a patient and return the updated row partial.
+    HTMX: swaps the single row in the table.
+    """
+    if not _require_reception(request):
+        return HttpResponseBadRequest("Not allowed")
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST only")
+
+    p = get_object_or_404(Patient, pk=pk)
+    p.is_active = not p.is_active
+    p.save(update_fields=["is_active"])
+
+    # Return just the row HTML so HTMX can swap it in place
+    return TemplateResponse(request, "reception/_patients_row.html", {"p": p})
+
+
+@login_required
+def reception_patient_create(request: HttpRequest):
+    """
+    Reception creates a patient and MUST choose a clinician to assign.
+    On save, the patient is wired to the clinician and will appear in the clinician’s list.
+    """
+    if not _require_reception(request):
+        messages.error(request, "Not allowed.")
+        return redirect("home")
+
+    User = get_user_model()
+
+    if request.method == "POST":
+        given_name  = (request.POST.get("given_name") or "").strip()
+        family_name = (request.POST.get("family_name") or "").strip()
+        email       = (request.POST.get("email") or "").strip().lower() or None
+        phone       = (request.POST.get("phone") or "").strip()
+        dob_raw     = (request.POST.get("date_of_birth") or "").strip()
+        sex         = (request.POST.get("sex") or "").strip() or None
+        address_line= (request.POST.get("address_line") or "").strip() or None
+        city        = (request.POST.get("city") or "").strip() or None
+        region      = (request.POST.get("region") or "").strip() or None
+        postal_code = (request.POST.get("postal_code") or "").strip() or None
+        country     = (request.POST.get("country") or "").strip() or None
+        clinician_id= (request.POST.get("clinician_id") or "").strip()
+
+        errors = []
+        if not given_name:
+            errors.append("Given name is required.")
+        if not family_name:
+            errors.append("Family name is required.")
+        if not clinician_id:
+            errors.append("Clinician selection is required for reception.")
+
+        dob = None
+        if dob_raw:
+            try:
+                dob = date.fromisoformat(dob_raw)
+            except Exception:
+                errors.append("Date of birth format should be YYYY-MM-DD.")
+
+        clinician = None
+        if clinician_id:
+            try:
+                clinician = User.objects.get(pk=int(clinician_id), is_active=True, is_staff=True)
+            except (User.DoesNotExist, ValueError):
+                errors.append("Selected clinician is invalid.")
+
+        if errors:
+            messages.error(request, " ".join(errors))
+            clinicians = User.objects.filter(is_staff=True, is_active=True).order_by("first_name", "last_name", "id")
+            return render(request, "reception/patient_create.html", {"clinicians": clinicians, "form": request.POST})
+
+        patient = Patient.objects.create(
+            given_name=given_name,
+            family_name=family_name,
+            email=email,
+            phone=phone,
+            date_of_birth=dob,
+            sex=sex,
+            address_line=address_line,
+            city=city,
+            region=region,
+            postal_code=postal_code,
+            country=country,
+            is_active=True,
+        )
+
+        # Human-readable external ID
+        try:
+            if not getattr(patient, "external_id", None):
+                patient.external_id = f"PT-{patient.pk:06d}"
+                patient.save(update_fields=["external_id"])
+        except Exception:
+            pass
+
+        # Wire to clinician
+        if clinician:
+            _assign_patient_to_clinician(patient, clinician)
+
+        messages.success(request, "Patient created and assigned to clinician.")
+        return redirect("patients_ui:reception_patients_list")
+
+    clinicians = User.objects.filter(is_staff=True, is_active=True).order_by("first_name", "last_name", "id")
+    return render(request, "reception/patient_create.html", {"clinicians": clinicians})
+
+
+@login_required
+def reception_patient_activate(request: HttpRequest, pk: int):
+    if not _require_reception(request):
+        messages.error(request, "Not allowed.")
+        return redirect("home")
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST only")
+
+    p = get_object_or_404(Patient, pk=pk)
+    p.is_active = True
+    # Clear merge flags if present
+    if hasattr(p, "merged_into_id"):
+        p.merged_into_id = None
+    if hasattr(p, "merged_at"):
+        p.merged_at = None
+    p.save()
+    messages.success(request, "Patient reactivated.")
+    return redirect("patients_ui:reception_patients_list")
+
+
+@login_required
+def reception_patient_deactivate(request: HttpRequest, pk: int):
+    if not _require_reception(request):
+        messages.error(request, "Not allowed.")
+        return redirect("home")
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST only")
+
+    p = get_object_or_404(Patient, pk=pk)
+    p.is_active = False
+    p.save(update_fields=["is_active"])
+    messages.success(request, "Patient deactivated.")
+    return redirect("patients_ui:reception_patients_list")

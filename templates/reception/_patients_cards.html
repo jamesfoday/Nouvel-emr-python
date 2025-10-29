@@ -1,0 +1,7 @@
+{% for p in patients %}
+  {% include "reception/_patient_card.html" with p=p %}
+{% empty %}
+  <div class="p-6 text-center text-slate-500 bg-white/60 backdrop-blur rounded-3xl border border-slate-200 w-64 mx-24">
+    No patients found.
+  </div>
+{% endfor %}

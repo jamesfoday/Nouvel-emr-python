@@ -1,12 +1,12 @@
 <!doctype html>
-{% load static rbac_tags %}
+{% load static rbac_tags menus_tags %}
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{% block title %}Nouvel Console{% endblock %}</title>
 
-    <!-- Tailwind (dev-only CDN) should load BEFORE our CSS so our rules can override -->
+    <!-- Tailwind (dev-only CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- App styles -->
@@ -26,10 +26,9 @@
       });
     </script>
 
-    <!-- Minimal safety net so layout works even if app.css isn't loaded yet -->
     <style>
-      :root { --app-bar-h: 64px; }           /* matches h-16 on mobile */
-      @media (min-width:768px){ :root { --app-bar-h: 80px; } } /* md:h-20 */
+      :root { --app-bar-h: 64px; }
+      @media (min-width:768px){ :root { --app-bar-h: 80px; } }
       html,body{width:100%;overflow-x:hidden;}
       main.has-fixed-appbar{
         padding-top: calc(var(--app-bar-h) + env(safe-area-inset-top,0px));
@@ -37,18 +36,39 @@
         padding-left:  max(env(safe-area-inset-left,0px), 0px);
         padding-right: max(env(safe-area-inset-right,0px), 0px);
         padding-bottom:max(env(safe-area-inset-bottom,0px), 0px);
-
       }
-    input:-webkit-autofill,
-    select:-webkit-autofill,
-    textarea:-webkit-autofill {
-      -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
-      box-shadow: inset 0 0 0 1000px #fff !important;
-      -webkit-text-fill-color: #111827 !important; /* gray-900 */
-      caret-color: #111827 !important;
-      transition: background-color 9999s ease-in-out 0s; /* prevents flash */
-    }
 
+      /* Mobile drawer helpers (vertical, non-scrolling drawer) */
+      #mobile-menu .mobi .group > ul,
+      #mobile-menu .mobi .group > div{
+        visibility: visible !important;
+        opacity: 1 !important;
+        transform: none !important;
+        pointer-events: auto !important;
+        position: static !important;
+        margin-top: .25rem;
+      }
+      #mobile-menu .mobi a,
+      #mobile-menu .mobi button{
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: .75rem .875rem;
+        border-radius: .75rem;
+        color:#0f172a;
+      }
+      #mobile-menu .mobi a:hover,
+      #mobile-menu .mobi button:hover{
+        background: #f1f5f9; /* slate-100 */
+      }
+      #mobile-menu .mobi .group > ul li + li{
+        border-top: 1px solid rgba(0,0,0,.06);
+        margin-top: .25rem;
+        padding-top: .25rem;
+      }
+
+      /* Reduce gap under header on pages like home */
+      .tight-hero { margin-top: calc(-1 * var(--app-bar-h)); }
     </style>
 
     {% block head %}{% endblock %}
@@ -59,58 +79,243 @@
     <header id="app-bar"
             class="sticky top-0 z-40 h-16 md:h-20 border-b border-black/5
                    bg-white/80 supports-[backdrop-filter]:bg-white/60 backdrop-blur">
-      <div class="max-w-7xl mx-auto h-full px-4 md:px-6
-                  flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <a href="/console/" class="font-bold text-lg no-underline text-gray-900">Nouvel</a>
-          <span class="text-gray-500 hidden sm:inline">Console</span>
-          {% block appbar_left %}{% endblock %}
+      <div class="max-w-7xl mx-auto h-full px-4 md:px-6 flex items-center w-full">
+        <div class="w-full" role="navigation" aria-label="Primary">
+          <div class="bg-[#24B2C1] text-white rounded-2xl">
+            <!-- Mobile header: Menu | Logo | Auth -->
+            <div class="h-12 px-4 md:px-6 md:hidden grid grid-cols-3 items-center">
+              <!-- Left: Mobile menu trigger -->
+              <div class="justify-self-start">
+                <button class="inline-flex items-center gap-2 rounded-lg border border-white/25 px-3 py-2 active:scale-[.99]"
+                        data-open-mobile aria-label="Open menu">
+                  <span class="text-sm">Menu</span>
+                </button>
+              </div>
+
+              <!-- Center: Logo -->
+              <div class="justify-self-center">
+                <a href="/" class="inline-flex items-center gap-2 no-underline">
+                  <img src="{% static 'img/logo.png' %}" alt="Nouvel Logo" class="h-6 w-auto">
+                </a>
+              </div>
+
+              <!-- Right: Auth (Login green / Logout red) -->
+              <div class="justify-self-end">
+                {% if request.user.is_authenticated %}
+                  <form method="post" action="/logout/" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 rounded-lg bg-red-600 text-white px-3 py-2 hover:bg-red-700 active:scale-[.99] focus:outline-none focus:ring-2 focus:ring-white/60">
+                      Logout
+                    </button>
+                  </form>
+                {% else %}
+                  <button type="button"
+                          class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 text-white px-3 py-2 hover:bg-emerald-700 active:scale-[.99] focus:outline-none focus:ring-2 focus:ring-white/60"
+                          data-open-login aria-haspopup="dialog" aria-controls="login-modal">
+                    Login
+                  </button>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Desktop header -->
+            <div class="h-14 px-4 md:px-6 hidden md:flex items-center gap-4">
+              <!-- Left: Logo -->
+              <a href="/" class="inline-flex items-center gap-2 no-underline">
+                <img src="{% static 'img/logo.png' %}" alt="Nouvel Logo" class="h-7 w-auto">
+              </a>
+
+              <!-- Center: Desktop menus (centered) -->
+              <div class="flex-1 flex justify-center">
+                {% menu_keys as MENU_KEYS %}
+                <nav class="flex items-center gap-10">
+                  {% if MENU_KEYS %}
+                    {% for key in MENU_KEYS %}
+                      {% render_menu key 'flex items-center gap-6' %}
+                    {% endfor %}
+                  {% endif %}
+                </nav>
+              </div>
+
+              <!-- Right: Auth -->
+              <div class="ml-auto flex items-center gap-2">
+                {% if request.user.is_authenticated %}
+                  <span class="hidden lg:inline-flex items-center gap-2 px-2 py-1 rounded-lg bg-white/10 text-white/90">
+                    <span class="inline-grid place-items-center h-6 w-6 rounded-full bg-white/20 text-xs font-semibold">
+                      {{ request.user.first_name|first|default:request.user.username|first|upper }}
+                    </span>
+                    <span class="text-sm font-medium truncate max-w-[10rem]">
+                      {{ request.user.get_full_name|default:request.user.username }}
+                    </span>
+                  </span>
+                  <form method="post" action="/logout/" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 rounded-lg bg-red-600 text-white px-3 py-2 hover:bg-red-700 active:scale-[.99] focus:outline-none focus:ring-2 focus:ring-white/60">
+                      Logout
+                    </button>
+                  </form>
+                {% else %}
+                  <button type="button"
+                          class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 text-white px-3 py-2 hover:bg-emerald-700 active:scale-[.99] focus:outline-none focus:ring-2 focus:ring-white/60"
+                          data-open-login aria-haspopup="dialog" aria-controls="login-modal">
+                    Login
+                  </button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
         </div>
-
-        <nav class="flex items-center gap-4 text-sm md:text-base">
-          <a class="hover:underline" href="/console/patients/">Patients</a>
-          <a class="hover:underline" href="/console/appointments/">Appointments</a>
-          {% if request.user|in_roles:"admin" %}
-            <a class="hover:underline" href="/admin/">Admin</a>
-          {% endif %}
-          <a class="hover:underline" href="/api/docs/">API</a>
-
-          {# ---------------- NEW: role-aware inbox badge ---------------- #}
-          {% if request.user.is_authenticated and request.user.is_staff %}
-            {# Clinician badge goes to clinicians_ui namespace #}
-            <span id="clinician-inbox-badge"
-                  hx-get="{% url 'clinicians_ui:unread_badge' request.user.id %}"
-                  hx-trigger="load, every 10s, refresh-badges from:body"
-                  hx-swap="outerHTML"></span>
-          {% elif request.user.is_authenticated %}
-            {# Patient/portal badge uses portal_ui endpoint #}
-            <span id="portal-inbox-badge"
-                  hx-get="{% url 'portal_ui:unread_total_badge' %}"
-                  hx-trigger="load, every 10s, refresh-badges from:body"
-                  hx-swap="outerHTML"></span>
-          {% endif %}
-          {# -------------------------------------------------------------- #}
-
-          <span id="busy-indicator" class="htmx-indicator inline-flex items-center gap-2 text-gray-500">
-            <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></span>
-            Loading…
-          </span>
-          {% block appbar_right %}{% endblock %}
-        </nav>
       </div>
     </header>
- <div id="modal-root"></div>
+
+    <!-- Mobile Off-Canvas Drawer -->
+    <div id="mobile-menu" class="fixed inset-0 z-[60] hidden" aria-hidden="true">
+      <!-- Overlay -->
+      <div class="absolute inset-0 bg-black/40" data-close-mobile></div>
+
+      <!-- Drawer -->
+      <aside class="absolute right-0 top-0 h-dvh w-[84vw] max-w-[420px]
+                    bg-white shadow-xl border-l border-black/10
+                    p-4 overflow-hidden">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold">Menu</h2>
+          <button type="button" class="h-9 w-9 grid place-items-center rounded-lg
+                                      border border-black/10 hover:bg-slate-50"
+                  aria-label="Close" data-close-mobile>✕</button>
+        </div>
+
+        {% comment %} Vertical mobile menu {% endcomment %}
+        {% menu_keys as MENU_KEYS %}
+        <nav class="space-y-6">
+          {% for key in MENU_KEYS %}
+            {% include "menus/_mobile_menu_section.html" with menu_key=key %}
+          {% endfor %}
+        </nav>
+
+        {% if request.user.is_authenticated %}
+          <div class="mt-6 pt-4 border-t border-black/10">
+            <form method="post" action="/logout/">
+              {% csrf_token %}
+              <button type="submit"
+                      class="w-full inline-flex items-center justify-center rounded-xl bg-red-600 text-white px-4 py-3 font-semibold hover:bg-red-700 active:scale-[.99]">
+                Logout
+              </button>
+            </form>
+          </div>
+        {% else %}
+          <div class="mt-6 pt-4 border-t border-black/10">
+            <button type="button"
+                    class="w-full inline-flex items-center justify-center rounded-xl bg-emerald-600 text-white px-4 py-3 font-semibold hover:bg-emerald-700 active:scale-[.99]"
+                    data-open-login aria-haspopup="dialog" aria-controls="login-modal">
+              Login
+            </button>
+          </div>
+        {% endif %}
+      </aside>
+    </div>
 
     <!-- Page content -->
-    <main class="has-fixed-appbar">
+    <main class="has-fixed-appbar -mt-[calc(var(--app-bar-h))]">
       {% block content %}{% endblock %}
     </main>
 
-    <!-- Modal root (HTMX partials can target this) -->
-    <div id="modal" class="modal-root" aria-live="polite" aria-atomic="true"></div>
+    <!-- Login Modal (centered) -->
+    <div id="login-modal" class="fixed inset-0 z-[70] hidden" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
+      <!-- Overlay -->
+      <div class="absolute inset-0 bg-black/40" data-close-login></div>
+
+      <!-- Center container -->
+      <div class="absolute inset-0 flex items-center justify-center p-4">
+        <!-- Dialog -->
+        <div class="w-[92vw] max-w-md rounded-2xl bg-white shadow-xl ring-1 ring-black/10">
+          <div class="flex items-center justify-between px-5 py-4 border-b border-black/10">
+            <h2 id="login-modal-title" class="text-base font-semibold text-slate-900">Choose how to sign in</h2>
+            <button type="button" class="h-9 w-9 grid place-items-center rounded-lg border border-black/10 hover:bg-slate-50" data-close-login aria-label="Close">✕</button>
+          </div>
+
+          <div class="p-5 space-y-3">
+            <!-- Patient -->
+            <a href="http://127.0.0.1:8000/login/"
+               class="w-full inline-flex items-center justify-between rounded-xl bg-emerald-600 text-white px-4 py-3 font-semibold hover:bg-emerald-700 active:scale-[.99] focus:outline-none focus:ring-2 focus:ring-emerald-300">
+              <span>Patient Portal</span>
+              <span aria-hidden="true">›</span>
+            </a>
+
+            <!-- Clinician -->
+            <a href="http://127.0.0.1:8000/clinician/login/"
+               class="w-full inline-flex items-center justify-between rounded-xl bg-white ring-1 ring-emerald-900/15 text-emerald-900 px-4 py-3 font-semibold hover:bg-emerald-50 active:scale-[.99] focus:outline-none focus:ring-2 focus:ring-emerald-300">
+              <span>Clinician Console</span>
+              <span aria-hidden="true">›</span>
+            </a>
+            {# If you prefer /console/login/ instead, swap the href above #}
+
+            <!-- Reception -->
+            <a href="http://127.0.0.1:8000/reception/login/"
+               class="w-full inline-flex items-center justify-between rounded-xl bg-white ring-1 ring-emerald-900/15 text-emerald-900 px-4 py-3 font-semibold hover:bg-emerald-50 active:scale-[.99] focus:outline-none focus:ring-2 focus:ring-emerald-300">
+              <span>Reception Desk</span>
+              <span aria-hidden="true">›</span>
+            </a>
+          </div>
+
+          <div class="px-5 pb-5 text-xs text-slate-500">
+            Having trouble? <a href="/portal/password-reset/" class="text-emerald-700 hover:underline">Reset your password</a>.
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- App scripts -->
     <script defer src="{% static 'js/console.js' %}"></script>
+
+    <!-- Drawer + Login modal scripts -->
+    <script>
+      // Mobile drawer toggle
+      document.addEventListener('click', (e) => {
+        const openBtn = e.target.closest('[data-open-mobile]');
+        const closeBtn = e.target.closest('[data-close-mobile]');
+        const drawer = document.getElementById('mobile-menu');
+        if (!drawer) return;
+        if (openBtn) { drawer.classList.remove('hidden'); document.body.style.overflow='hidden'; }
+        if (closeBtn) { drawer.classList.add('hidden'); document.body.style.overflow=''; }
+      });
+
+      // Login modal (open/close + Esc + focus restore)
+      (function () {
+        const modal = document.getElementById('login-modal');
+        let lastFocus = null;
+
+        function openLogin() {
+          if (!modal) return;
+          lastFocus = document.activeElement;
+          modal.classList.remove('hidden');
+          document.body.style.overflow = 'hidden';
+          const focusable = modal.querySelector('a,button');
+          focusable && focusable.focus();
+        }
+        function closeLogin() {
+          if (!modal) return;
+          modal.classList.add('hidden');
+          document.body.style.overflow = '';
+          lastFocus && lastFocus.focus();
+        }
+
+        document.addEventListener('click', (e) => {
+          if (e.target.closest('[data-open-login]')) openLogin();
+          if (e.target.closest('[data-close-login]')) closeLogin();
+        });
+
+        document.addEventListener('keydown', (e) => {
+          if (!modal || modal.classList.contains('hidden')) return;
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            closeLogin();
+          }
+        });
+      })();
+    </script>
+
     {% block scripts %}{% endblock %}
   </body>
 </html>

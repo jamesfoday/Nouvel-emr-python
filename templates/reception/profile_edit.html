@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto p-6">
+  <h1 class="text-2xl font-semibold mb-4">Edit profile</h1>
+  <form method="post" enctype="multipart/form-data" class="bg-white rounded-3xl shadow-sm p-6 space-y-4">
+    {% csrf_token %}
+    <div class="flex items-center gap-6">
+      <div class="w-28 h-28 rounded-full bg-gray-100 overflow-hidden">
+        {% if profile.avatar %}
+          <img src="{{ profile.avatar.url }}" class="w-full h-full object-cover" alt="Avatar">
+        {% else %}
+          <img src="{% static 'img/avatar-doc.png' %}" class="w-full h-full object-cover" alt="Avatar">
+        {% endif %}
+      </div>
+      <div class="flex-1 grid gap-3">
+        <label class="block">
+          <span class="text-sm text-gray-600">Change avatar</span>
+          {{ form.avatar }}
+        </label>
+        <label class="inline-flex items-center gap-2">
+          {{ form.remove_avatar }} <span class="text-sm text-gray-600">Remove current avatar</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <label class="block">
+        <span class="text-sm text-gray-600">Title</span>
+        {{ form.title }}
+      </label>
+      <label class="block">
+        <span class="text-sm text-gray-600">Phone</span>
+        {{ form.phone }}
+      </label>
+      <label class="block">
+        <span class="text-sm text-gray-600">Department</span>
+        {{ form.department }}
+      </label>
+      <label class="block">
+        <span class="text-sm text-gray-600">Location</span>
+        {{ form.location }}
+      </label>
+      <label class="block md:col-span-2">
+        <span class="text-sm text-gray-600">Bio</span>
+        {{ form.bio }}
+      </label>
+    </div>
+
+    <div class="flex items-center justify-end gap-3 pt-4">
+      <a href="{% url 'reception:dashboard' %}" class="px-4 py-2 rounded-xl bg-gray-100">Cancel</a>
+      <button class="px-4 py-2 rounded-xl bg-emerald-600 text-white">Save changes</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

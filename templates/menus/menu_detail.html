@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load menus_tags %}
+{% block content %}
+<div class="max-w-6xl mx-auto p-6 space-y-6">
+  {% include "menus/_crumbs.html" with menu=menu %}
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold">{{ menu.name }}</h1>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'menus:menu_edit' menu.pk %}" class="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200">Edit</a>
+      <a href="{% url 'menus:menu_delete' menu.pk %}" class="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200">Delete</a>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl border p-6">
+    <h2 class="font-semibold mb-3">Top-level Items</h2>
+    <div class="flex items-center justify-between mb-4">
+      <p class="text-sm text-slate-500">Add menu entries and arrange order. Hover on the public site to view mega panels.</p>
+      <a href="{% url 'menus:item_create' menu.pk %}" class="px-3 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">Add Item</a>
+    </div>
+
+    {% for item in top_items %}
+      <div class="border rounded-xl mb-3">
+        <div class="flex items-center justify-between px-4 py-3 bg-slate-50 rounded-t-xl">
+          <div class="flex items-center gap-2">
+            <span class="font-medium">{{ item.label }}</span>
+            {% if item.is_mega %}<span class="text-xs px-2 py-0.5 rounded bg-teal-100 text-teal-700">Mega ({{ item.mega_columns }} cols)</span>{% endif %}
+            {% if not item.is_active %}<span class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600">Hidden</span>{% endif %}
+          </div>
+          <div class="flex items-center gap-2">
+            <a href="{% url 'menus:item_edit' item.pk %}" class="px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200">Edit</a>
+            <a href="{% url 'menus:item_delete' item.pk %}" class="px-3 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200">Delete</a>
+          </div>
+        </div>
+        {% if item.children.all %}
+          <div class="px-4 py-3 space-y-2">
+            {% for c in item.children.all %}
+              <div class="flex items-center justify-between">
+                <div class="truncate">
+                  <span class="text-slate-700">{{ c.label }}</span>
+                  <span class="text-slate-400 text-sm">· {{ c.get_url_kind_display }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <a href="{% url 'menus:item_edit' c.pk %}" class="px-2 py-1 rounded bg-amber-100 hover:bg-amber-200 text-sm">Edit</a>
+                  <a href="{% url 'menus:item_delete' c.pk %}" class="px-2 py-1 rounded bg-rose-100 hover:bg-rose-200 text-sm">Delete</a>
+                </div>
+              </div>
+            {% empty %}
+              <div class="text-slate-500 text-sm">No children.</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    {% empty %}
+      <p class="text-slate-500">No items yet.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

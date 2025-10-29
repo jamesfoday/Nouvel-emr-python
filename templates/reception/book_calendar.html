@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="py-8">
+  <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 rounded-3xl bg-emerald-50/30 shadow-xl ring-1 ring-white/20 py-6">
+
+    <div class="flex items-center justify-between gap-3">
+      <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">Reception · Book an appointment (Week view)</h1>
+      <div class="flex items-center gap-2">
+        <a href="{% url 'reception:appt_hub' %}"
+           class="inline-flex items-center gap-2 rounded-xl bg-white/80 ring-1 ring-black/10 px-3 py-1.5 text-sm">
+          ← Back
+        </a>
+      </div>
+    </div>
+
+    {# Controls — load the week grid via reception_book_slots_grid #}
+ <form id="reception-book-controls"
+      class="mt-5 grid grid-cols-1 md:grid-cols-7 gap-3"
+      hx-get="{% url 'reception:reception_book_slots_grid' %}"
+      hx-target="#slots-grid"
+      hx-swap="innerHTML"
+      hx-include="#reception-book-controls"
+      hx-trigger="
+        load[document.getElementById('clinician') && document.getElementById('clinician').value],
+        change from:#clinician,
+        change from:#week_start,
+        change from:#duration">
+
+      {# Clinician select #}
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Clinician</label>
+        <select id="clinician" name="clinician_id" required
+                class="w-full rounded-2xl border border-white/40 bg-white/60 px-3 py-2.5">
+          <option value="" disabled {% if not clinician_id %}selected{% endif %}>Select a clinician</option>
+          {% for c in clinicians %}
+            {% with name=c.get_full_name|default:c.username %}
+              <option value="{{ c.id }}" {% if clinician_id == c.id %}selected{% endif %}>{{ name }}</option>
+            {% endwith %}
+          {% endfor %}
+        </select>
+      </div>
+
+      {# Patient select (works with PatientProfile.user or plain User) #}
+     <div class="md:col-span-2">
+  <label class="block text-sm font-medium mb-1">Patient</label>
+  <select id="patient" name="patient_id" required
+          class="w-full rounded-2xl border border-white/40 bg-white/60 px-3 py-2.5">
+    <option value="" disabled {% if not patient_id %}selected{% endif %}>Select a patient</option>
+    {% for p in patients %}
+      <option value="{{ p.id }}" {% if patient_id == p.id %}selected{% endif %}>
+        {{ p.label }}
+      </option>
+    {% endfor %}
+  </select>
+
+  {# Quick search (typeahead still returns <option value="Patient.id">Label</option>) #}
+  <input id="patient-search"
+         type="search"
+         placeholder="Quick search…"
+         class="mt-2 w-full rounded-2xl border border-white/40 bg-white/60 px-3 py-2.5 text-sm"
+         list="patient-options"
+         hx-get="{% url 'reception:patient_typeahead' %}"
+         hx-trigger="keyup changed delay:300ms"
+         hx-target="#patient-options"
+         hx-vals='{"q": this.value}'>
+  <datalist id="patient-options"></datalist>
+</div>
+
+      {# Week start (Mon–Sun display; your view accepts YYYY-MM-DD) #}
+      <div class="md:col-span-1">
+        <label class="block text-sm font-medium mb-1">Week start</label>
+        <input id="week_start" name="week_start" type="date"
+               class="w-full rounded-2xl border border-white/40 bg-white/60 px-3 py-2.5"
+               value="{{ week_start|date:'Y-m-d' }}">
+      </div>
+
+      {# Duration #}
+      <div class="md:col-span-1">
+        <label class="block text-sm font-medium mb-1">Duration (min)</label>
+        <input id="duration" name="duration" type="number" min="10" step="5" value="{{ duration|default:30 }}"
+               class="w-full rounded-2xl border border-white/40 bg-white/60 px-3 py-2.5">
+      </div>
+
+      <!-- <div class="md:col-span-1 flex items-end gap-2">
+        <button type="submit"
+                class="rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white">
+          Load week
+        </button>
+      </div> -->
+    </form>
+
+    {# Week navigation #}
+    <div class="mt-4 flex items-center gap-2">
+      <button type="button"
+              class="rounded-xl border border-white/30 bg-white/60 px-3 py-1.5 text-sm"
+              hx-get="{% url 'reception:reception_book_slots_grid' %}"
+              hx-target="#slots-grid"
+              hx-swap="innerHTML"
+              hx-include="#reception-book-controls"
+              hx-vals='js:(() => {
+                const d = new Date(document.getElementById("week_start").value || new Date());
+                d.setDate(d.getDate() - 7);
+                const iso = d.toISOString().slice(0,10);
+                document.getElementById("week_start").value = iso;
+                return {};
+              })()'>
+        ← Prev week
+      </button>
+
+      <button type="button"
+              class="rounded-xl border border-white/30 bg-white/60 px-3 py-1.5 text-sm"
+              hx-get="{% url 'reception:reception_book_slots_grid' %}"
+              hx-target="#slots-grid"
+              hx-swap="innerHTML"
+              hx-include="#reception-book-controls"
+              hx-vals='js:(() => {
+                const d = new Date(document.getElementById("week_start").value || new Date());
+                d.setDate(d.getDate() + 7);
+                const iso = d.toISOString().slice(0,10);
+                document.getElementById("week_start").value = iso;
+                return {};
+              })()'>
+        Next week →
+      </button>
+    </div>
+
+    {# Flash area for booking messages #}
+    <div id="flash" class="mt-4"></div>
+
+    {# Week grid mounts here #}
+    <div id="slots-grid" class="mt-4"></div>
+
+  </div>
+</div>
+
+<script>
+  // Datalist -> Select bridge
+  (function () {
+    const searchEl = document.getElementById('patient-search');
+    const selectEl = document.getElementById('patient');
+    const listEl = document.getElementById('patient-options');
+    searchEl?.addEventListener('change', () => {
+      const opts = Array.from(listEl.options || []);
+      const match = opts.find(o =>
+        o.label === searchEl.value || o.text === searchEl.value || o.innerText === searchEl.value
+      ) || opts.find(o => o.value === searchEl.value);
+      if (match) {
+        const id = match.value;
+        if (!Array.from(selectEl.options).some(o => o.value === id)) {
+          const opt = new Option(match.text || searchEl.value, id, true, true);
+          selectEl.add(opt);
+        }
+        selectEl.value = id;
+      }
+    });
+  })();
+
+  // HTMX event listeners for success/conflict triggers
+  document.body.addEventListener('reception:slot-booked', function (e) {
+    const flash = document.getElementById('flash');
+    if (flash) {
+      flash.innerHTML = '<div class="text-emerald-700 text-sm">Appointment booked. Refreshing slots…</div>';
+    }
+    // Re-load grid with current form values
+    htmx.trigger('#reception-book-controls', 'submit');
+  });
+
+  document.body.addEventListener('reception:slot-conflict', function () {
+    const flash = document.getElementById('flash');
+    if (flash) {
+      flash.innerHTML = '<div class="text-red-700 text-sm">That slot was taken. Reloaded availability.</div>';
+    }
+    htmx.trigger('#reception-book-controls', 'submit');
+  });
+</script>
+{% endblock %}

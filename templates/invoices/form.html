@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-6 md:p-8 max-w-6xl mx-auto space-y-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between gap-3 flex-wrap">
+    <div class="flex items-center gap-3">
+      <a href="{% url 'invoices:list' %}" class="inline-flex items-center gap-2 rounded-full bg-white/80 ring-1 ring-emerald-900/10 px-3 py-1.5 text-sm hover:bg-white">
+        ← Back
+      </a>
+      <h1 class="text-2xl font-semibold text-emerald-900">
+        {% if mode == 'edit' %}Edit Invoice{% else %}Create Invoice{% endif %}
+      </h1>
+    </div>
+    <div class="hidden sm:block text-sm text-emerald-900/70">
+      {% if mode == 'edit' and invoice.number %}#{{ invoice.number }}{% endif %}
+    </div>
+  </div>
+
+  <!-- Form card -->
+  <form method="post"
+        class="rounded-3xl bg-emerald-50/60 supports-[backdrop-filter]:bg-emerald-50/40 backdrop-blur ring-1 ring-emerald-900/10 shadow p-5 md:p-8 space-y-8">
+    {% csrf_token %}
+
+    <!-- Top grid -->
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <label class="block">
+        <span class="block text-sm font-medium text-emerald-900 mb-1">Customer</span>
+        {{ form.customer }}
+        {% if form.customer.errors %}<p class="mt-1 text-xs text-red-600">{{ form.customer.errors|join:", " }}</p>{% endif %}
+      </label>
+
+      <label class="block">
+        <span class="block text-sm font-medium text-emerald-900 mb-1">Status</span>
+        {{ form.status }}
+        {% if form.status.errors %}<p class="mt-1 text-xs text-red-600">{{ form.status.errors|join:", " }}</p>{% endif %}
+      </label>
+
+      <label class="block">
+        <span class="block text-sm font-medium text-emerald-900 mb-1">Currency</span>
+        {{ form.currency }}
+        {% if form.currency.errors %}<p class="mt-1 text-xs text-red-600">{{ form.currency.errors|join:", " }}</p>{% endif %}
+      </label>
+
+      <label class="block">
+        <span class="block text-sm font-medium text-emerald-900 mb-1">Tax Rate (%)</span>
+        {{ form.tax_rate }}
+        {% if form.tax_rate.errors %}<p class="mt-1 text-xs text-red-600">{{ form.tax_rate.errors|join:", " }}</p>{% endif %}
+      </label>
+
+      <label class="block">
+        <span class="block text-sm font-medium text-emerald-900 mb-1">Issued at</span>
+        {{ form.issued_at }}
+        {% if form.issued_at.errors %}<p class="mt-1 text-xs text-red-600">{{ form.issued_at.errors|join:", " }}</p>{% endif %}
+      </label>
+
+      <label class="block">
+        <span class="block text-sm font-medium text-emerald-900 mb-1">Due at</span>
+        {{ form.due_at }}
+        {% if form.due_at.errors %}<p class="mt-1 text-xs text-red-600">{{ form.due_at.errors|join:", " }}</p>{% endif %}
+      </label>
+
+      <label class="block md:col-span-2">
+        <span class="block text-sm font-medium text-emerald-900 mb-1">Note</span>
+        {{ form.note }}
+        {% if form.note.errors %}<p class="mt-1 text-xs text-red-600">{{ form.note.errors|join:", " }}</p>{% endif %}
+      </label>
+    </section>
+
+    <!-- Items -->
+    <section class="space-y-3">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <h2 class="text-sm font-semibold text-emerald-900/80 tracking-wide">Items</h2>
+        <button type="button" id="add-item"
+                class="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700">
+          + Add item
+        </button>
+      </div>
+
+      {{ formset.management_form }}
+
+      <!-- Header row (md+) -->
+      <div class="hidden md:grid grid-cols-12 gap-2 text-xs font-medium text-emerald-900/70 px-2">
+        <div class="col-span-7">Description</div>
+        <div class="col-span-2">Qty</div>
+        <div class="col-span-2">Unit price</div>
+        <div class="col-span-1"></div>
+      </div>
+
+      <div id="items-wrap" class="space-y-2">
+        {% for f in formset %}
+          <div class="item-row rounded-xl ring-1 ring-emerald-900/10 bg-white/90 p-3 grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
+            <div class="md:col-span-7">
+              <label class="md:hidden block text-xs font-medium text-emerald-900/70 mb-1">Description</label>
+              {{ f.description }}
+              {% if f.description.errors %}<p class="mt-1 text-xs text-red-600">{{ f.description.errors|join:", " }}</p>{% endif %}
+            </div>
+            <div class="md:col-span-2">
+              <label class="md:hidden block text-xs font-medium text-emerald-900/70 mb-1">Qty</label>
+              {{ f.qty }}
+              {% if f.qty.errors %}<p class="mt-1 text-xs text-red-600">{{ f.qty.errors|join:", " }}</p>{% endif %}
+            </div>
+            <div class="md:col-span-2">
+              <label class="md:hidden block text-xs font-medium text-emerald-900/70 mb-1">Unit price</label>
+              {{ f.unit_price }}
+              {% if f.unit_price.errors %}<p class="mt-1 text-xs text-red-600">{{ f.unit_price.errors|join:", " }}</p>{% endif %}
+            </div>
+            <div class="md:col-span-1 flex md:justify-end">
+              {% if f.instance.pk %}
+                <label class="inline-flex items-center gap-2 text-xs text-gray-600">
+                  {{ f.DELETE }} Remove
+                </label>
+              {% else %}
+                <button type="button"
+                        class="remove-row rounded-full px-2 py-1 text-xs ring-1 ring-emerald-900/10 hover:bg-emerald-50">Remove</button>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Hidden prototype from empty_form -->
+      <template id="item-empty-form">
+        <div class="item-row rounded-xl ring-1 ring-emerald-900/10 bg-white/90 p-3 grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
+          <div class="md:col-span-7">
+            <label class="md:hidden block text-xs font-medium text-emerald-900/70 mb-1">Description</label>
+            {{ formset.empty_form.description }}
+          </div>
+          <div class="md:col-span-2">
+            <label class="md:hidden block text-xs font-medium text-emerald-900/70 mb-1">Qty</label>
+            {{ formset.empty_form.qty }}
+          </div>
+          <div class="md:col-span-2">
+            <label class="md:hidden block text-xs font-medium text-emerald-900/70 mb-1">Unit price</label>
+            {{ formset.empty_form.unit_price }}
+          </div>
+          <div class="md:col-span-1 flex md:justify-end">
+            <button type="button" class="remove-row rounded-full px-2 py-1 text-xs ring-1 ring-emerald-900/10 hover:bg-emerald-50">Remove</button>
+          </div>
+          {{ formset.empty_form.id }}
+        </div>
+      </template>
+
+      <!-- Totals preview -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 pt-2 text-sm">
+        <div class="flex items-center gap-2">
+          <span class="text-emerald-900/70">Subtotal:</span>
+          <span id="preview-subtotal" class="font-medium text-emerald-900">0.00</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-emerald-900/70">Tax (<span id="preview-tax-rate">0</span>%)</span>
+          <span id="preview-tax" class="font-medium text-emerald-900">0.00</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-emerald-900/90 font-semibold">Total:</span>
+          <span id="preview-total" class="font-semibold text-emerald-900">0.00</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Actions -->
+    <div class="flex items-center justify-end gap-3">
+      <a href="{% url 'invoices:list' %}" class="rounded-xl px-4 py-2 bg-white/80 ring-1 ring-emerald-900/10 hover:bg-white">Cancel</a>
+      <button class="rounded-xl px-5 py-2 bg-emerald-600 text-white font-semibold hover:bg-emerald-700">
+        {% if mode == 'edit' %}Save{% else %}Create{% endif %}
+      </button>
+    </div>
+  </form>
+</div>
+
+
+{% block scripts %}
+<script>
+(function(){
+  // Force date pickers
+  ['#id_issued_at', '#id_due_at'].forEach(sel=>{
+    const el = document.querySelector(sel);
+    if (el && el.type !== 'date') el.setAttribute('type','date');
+  });
+
+  // Style base fields
+  const baseFields = ['#id_customer','#id_status','#id_currency','#id_tax_rate','#id_issued_at','#id_due_at','#id_note'];
+  baseFields.forEach(s=>{
+    const el = document.querySelector(s);
+    if (!el) return;
+    el.classList.add('w-full','rounded-xl','px-3','py-2','ring-1','ring-gray-200','bg-white','focus:ring-emerald-500','outline-none');
+    if (el.tagName === 'TEXTAREA') el.classList.add('min-h-[10rem]');
+  });
+
+  // Enhance item inputs
+  function enhance(scope=document){
+    scope.querySelectorAll('input, textarea, select').forEach(el=>{
+      if (!el.name || el.type === 'checkbox') return;
+      el.classList.add('w-full','rounded-xl','px-3','py-2','ring-1','ring-gray-200','bg-white','focus:ring-emerald-500','outline-none');
+      if (el.name.endsWith('-qty') || el.name.endsWith('-unit_price')) {
+        el.classList.add('text-right','md:text-left');
+      }
+    });
+  }
+  enhance(document);
+
+  // Elements
+  const wrap       = document.getElementById('items-wrap');
+  const addBtn     = document.getElementById('add-item');
+  const totalForms = document.getElementById('id_items-TOTAL_FORMS'); // prefix='items'
+  const tmpl       = document.getElementById('item-empty-form');
+
+  // --- SINGLE-BOUND click handler (prevents double-adding) ---
+  function handleAddItem(e){
+    e.preventDefault();
+    e.stopImmediatePropagation(); // if something tried to bind twice, stop here
+
+    // Use current count of rendered rows as the authoritative index
+    const currentCount = wrap.querySelectorAll('.item-row').length;
+    const nextIndex = Math.max(currentCount, parseInt(totalForms.value || '0', 10));
+
+    const node = tmpl.content.cloneNode(true);
+    node.querySelectorAll('[name],[id],label[for]').forEach(el=>{
+      ['name','id','for'].forEach(attr=>{
+        if (el.hasAttribute && el.hasAttribute(attr)) {
+          el.setAttribute(attr, el.getAttribute(attr).replace('__prefix__', nextIndex));
+        }
+      });
+    });
+
+    wrap.appendChild(node);
+    totalForms.value = nextIndex + 1; // keep management form in sync
+    enhance(wrap.lastElementChild);
+    recalc();
+  }
+
+  // IMPORTANT: assign as onclick so it cannot be accidentally bound twice
+  if (addBtn) addBtn.onclick = handleAddItem;
+
+  // Remove rows client-side
+  wrap?.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.remove-row');
+    if (!btn) return;
+    const row = btn.closest('.item-row');
+    row?.remove();
+
+    // also decrement TOTAL_FORMS to keep indices compact for POST
+    const rows = wrap.querySelectorAll('.item-row').length;
+    totalForms.value = rows;
+    recalc();
+  });
+
+  // Live totals
+  const taxRateEl = document.getElementById('id_tax_rate');
+  const prevRate  = document.getElementById('preview-tax-rate');
+  const prevSub   = document.getElementById('preview-subtotal');
+  const prevTax   = document.getElementById('preview-tax');
+  const prevTot   = document.getElementById('preview-total');
+
+  const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+  const money = v => Number(v).toFixed(2);
+
+  function recalc(){
+    let subtotal = 0;
+    wrap.querySelectorAll('.item-row').forEach(row=>{
+      const qty  = num(row.querySelector('input[name$="-qty"]')?.value);
+      const unit = num(row.querySelector('input[name$="-unit_price"]')?.value);
+      subtotal += (qty * unit);
+    });
+    const rate = num(taxRateEl?.value);
+    const tax  = subtotal * rate / 100;
+    const total = subtotal + tax;
+
+    prevRate.textContent = money(rate);
+    prevSub.textContent  = money(subtotal);
+    prevTax.textContent  = money(tax);
+    prevTot.textContent  = money(total);
+  }
+
+  wrap?.addEventListener('input', e=>{
+    if (e.target.matches('input[name$="-qty"], input[name$="-unit_price"]')) recalc();
+  });
+  taxRateEl?.addEventListener('input', recalc);
+  recalc();
+})();
+</script>
+{% endblock %}
+{% endblock %}

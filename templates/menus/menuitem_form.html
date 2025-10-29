@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-3xl mx-auto p-6 space-y-6">
+  <h1 class="text-2xl font-bold">{% if object %}Edit Menu Item{% else %}Create Menu Item{% endif %}</h1>
+  <form method="post" class="space-y-5 bg-white rounded-2xl border p-6">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="grid md:grid-cols-2 gap-4">
+      <div>{{ form.menu.label_tag }} {{ form.menu }}</div>
+      <div>{{ form.parent.label_tag }} {{ form.parent }}</div>
+    </div>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div>{{ form.label.label_tag }} {{ form.label }}</div>
+      <div>{{ form.icon.label_tag }} {{ form.icon }}</div>
+    </div>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div>{{ form.order.label_tag }} {{ form.order }}</div>
+      <div>{{ form.is_active.label_tag }} {{ form.is_active }}</div>
+      <div>{{ form.visibility.label_tag }} {{ form.visibility }}</div>
+    </div>
+
+    <hr class="my-2">
+    <div class="grid md:grid-cols-3 gap-4">
+      <div>{{ form.url_kind.label_tag }} {{ form.url_kind }}</div>
+      <div>{{ form.open_in_new_tab.label_tag }} {{ form.open_in_new_tab }}</div>
+      <div></div>
+    </div>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div>{{ form.named_url.label_tag }} {{ form.named_url }}</div>
+      <div>{{ form.internal_path.label_tag }} {{ form.internal_path }}</div>
+    </div>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div>{{ form.external_url.label_tag }} {{ form.external_url }}</div>
+      <div>{{ form.url_kwargs.label_tag }} {{ form.url_kwargs }}</div>
+    </div>
+    <div>{{ form.url_query.label_tag }} {{ form.url_query }}</div>
+
+    <hr class="my-2">
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="flex items-center gap-2">{{ form.is_mega }} <label for="{{ form.is_mega.id_for_label }}">Mega menu</label></div>
+      <div>{{ form.mega_columns.label_tag }} {{ form.mega_columns }}</div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <a href="{% if object %}{% url 'menus:menu_detail' object.menu_id %}{% else %}{% url 'menus:menu_list' %}{% endif %}" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200">Cancel</a>
+      <button class="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

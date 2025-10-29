@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="py-10 md:py-12">
+  <div class="max-w-6xl mx-auto px-4 md:px-6">
+
+    <div class="flex items-end justify-between gap-3">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-extrabold text-emerald-950">Services</h1>
+        <p class="text-emerald-900/70 mt-1">Browse available services.</p>
+      </div>
+      <form method="get" class="hidden md:block" role="search">
+        <input name="q" value="{{ q }}" placeholder="Search…"
+               class="px-4 py-2 rounded-xl bg-white ring-1 ring-emerald-900/10 focus:ring-2 focus:ring-emerald-500 outline-none">
+      </form>
+    </div>
+
+    <!-- mobile search -->
+    <form method="get" class="mt-4 md:hidden" role="search">
+      <input name="q" value="{{ q }}" placeholder="Search…"
+             class="w-full px-4 py-2 rounded-xl bg-white ring-1 ring-emerald-900/10 focus:ring-2 focus:ring-emerald-500 outline-none">
+    </form>
+
+    <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {% for s in services %}
+      <article class="rounded-2xl bg-white ring-1 ring-emerald-900/10 shadow-sm overflow-hidden">
+        <a href="{% url 'services:detail' s.slug %}" class="relative block h-40">
+          {% if s.hero_image %}
+            <img src="{{ s.hero_image.url }}" alt="{{ s.title }}" loading="lazy"
+                 class="absolute inset-0 w-full h-full object-cover">
+          {% else %}
+            <div class="absolute inset-0 bg-emerald-50"></div>
+          {% endif %}
+          <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/40 to-cyan-500/30"></div>
+          {% if s.hero_image %}
+          <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <img src="{{ s.hero_image.url }}" alt="" loading="lazy"
+                 class="w-24 h-24 rounded-full object-cover ring-4 ring-white shadow-lg">
+          </div>
+          {% endif %}
+        </a>
+        <div class="p-4">
+          <div class="rounded-xl bg-emerald-50/80 ring-1 ring-emerald-900/10 p-3 min-h-[92px]">
+            <div class="font-semibold text-emerald-950 mb-1 line-clamp-1">{{ s.title }}</div>
+            <p class="text-sm text-emerald-900/70 leading-snug line-clamp-2">
+              {% if s.summary %}{{ s.summary|truncatechars:120 }}
+              {% elif s.description %}{{ s.description|striptags|truncatechars:120 }}
+              {% else %}Details coming soon.{% endif %}
+            </p>
+          </div>
+          <div class="mt-3">
+            <a href="{% url 'services:detail' s.slug %}"
+               class="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500">
+              view
+            </a>
+          </div>
+        </div>
+      </article>
+      {% empty %}
+      <div class="col-span-full text-center text-emerald-900/60 py-10">
+        No services found.
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

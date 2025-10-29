@@ -1,0 +1,4 @@
+<nav class="text-sm text-slate-500 mb-4">
+  <a href="{% url 'menus:menu_list' %}" class="hover:underline">Menus</a>
+  {% if menu %} <span class="mx-2">/</span> <span class="text-slate-700">{{ menu.name }}</span>{% endif %}
+</nav>

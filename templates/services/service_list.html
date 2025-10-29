@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-6 md:p-8 space-y-6 max-w-5xl mx-4 sm:mx-6 md:mx-auto rounded-2xl ring-1 ring-emerald-900/10 bg-white/60 supports-[backdrop-filter]:bg-white/40 backdrop-blur mt-0">
+
+  {# ---------- Page header --------------------------------------------------- #}
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h1 class="text-2xl font-semibold text-emerald-900">Services</h1>
+    <div class="flex gap-2">  
+        <a href="{% url 'services:create' %}"
+       class="inline-flex items-center gap-2 rounded-full bg-emerald-600 text-white px-4 py-2 text-sm font-semibold shadow hover:bg-emerald-700">
+      <span class="text-lg leading-none">＋</span> Create
+    </a>
+
+      <a href="{% url 'reception:dashboard' %}"
+       class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700">
+      Home
+    </a>
+    </div>
+  
+  </div>
+
+  {# ---------- Glass search / filters bar ----------------------------------- #}
+  <form method="get"
+        class="rounded-2xl bg-white/50 supports-[backdrop-filter]:bg-white/30 backdrop-blur-md ring-1 ring-emerald-900/10 shadow-sm px-4 py-3">
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="relative flex-1 min-w-[240px]">
+        <input name="q" value="{{ q }}"
+               placeholder="Search services by title…"
+               class="w-full rounded-xl bg-white/60 supports-[backdrop-filter]:bg-white/40 backdrop-blur px-10 py-2.5 ring-1 ring-emerald-900/10 focus:ring-emerald-500 placeholder:text-emerald-900/50 outline-none" />
+        
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="rounded-full bg-emerald-600 text-white px-4 py-2 text-sm font-semibold shadow hover:bg-emerald-700" type="submit">
+          Apply
+        </button>
+        <a href="{% url 'services:list' %}" class="rounded-full bg-white/70 ring-1 ring-emerald-900/10 px-4 py-2 text-sm text-emerald-900/80 hover:bg-white">Reset</a>
+      </div>
+    </div>
+  </form>
+
+  {# ---------- Glass cards grid --------------------------------------------- #}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    {% for s in services %}
+      <article
+        class="group rounded-3xl bg-white/55 supports-[backdrop-filter]:bg-white/35 backdrop-blur-md ring-1 ring-emerald-900/10 shadow transition
+               hover:shadow-md hover:ring-emerald-900/20">
+
+        {# Top banner / hero area #}
+        <div class="relative rounded-t-3xl overflow-hidden bg-gradient-to-r from-emerald-500 to-cyan-500 h-28">
+          {% if s.hero_image %}
+            <div class="absolute inset-0 opacity-20">
+              <img src="{{ s.hero_image.url }}" alt="" class="w-full h-full object-cover">
+            </div>
+          {% endif %}
+
+          {# Circular thumbnail at center-top #}
+          <div class="absolute left-1/2 -translate-x-1/2 -bottom-8">
+            {% if s.hero_image %}
+              <img src="{{ s.hero_image.url }}" alt="{{ s.title }}"
+                   class="w-16 h-16 rounded-full object-cover ring-4 ring-white shadow" />
+            {% else %}
+              <div class="w-16 h-16 rounded-full bg-white/30 ring-4 ring-white grid place-items-center text-lg font-semibold text-white shadow">
+                {{ s.title|first|upper }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        {# Body #}
+        <div class="pt-10 px-4 pb-4 space-y-3">
+          <h2 class="text-center font-semibold text-emerald-950 truncate">{{ s.title }}</h2>
+
+          <div class="flex items-center justify-center gap-2">
+            <a href="{% url 'services:detail' s.slug %}"
+               class="inline-flex items-center rounded-full px-3 py-1.5 text-sm bg-emerald-600 text-white shadow hover:bg-emerald-700">
+              View
+            </a>
+            <a href="{% url 'services:update' s.slug %}"
+               class="inline-flex items-center rounded-full px-3 py-1.5 text-sm bg-white/80 ring-1 ring-emerald-900/15 text-emerald-800 hover:bg-white">
+              Edit
+            </a>
+            <form method="post" action="{% url 'services:delete' s.slug %}" class="inline-block"
+                  onsubmit="return confirm('Delete this service?')">
+              {% csrf_token %}
+              <button
+                class="inline-flex items-center rounded-full px-3 py-1.5 text-sm bg-red-50 ring-1 ring-red-200 text-red-700 hover:bg-red-100"
+                type="submit">
+                Delete
+              </button>
+            </form>
+          </div>
+        </div>
+      </article>
+    {% empty %}
+      <div class="col-span-full rounded-2xl bg-white/60 supports-[backdrop-filter]:bg-white/40 backdrop-blur-md ring-1 ring-emerald-900/10 p-6 text-emerald-900/70">
+        No services yet.
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

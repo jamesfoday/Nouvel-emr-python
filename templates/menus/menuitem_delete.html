@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-lg mx-auto p-6 space-y-6">
+  <h1 class="text-2xl font-bold">Delete Menu Item</h1>
+  <div class="bg-white rounded-2xl border p-6 space-y-4">
+    <p>Delete <b>{{ object.label }}</b> from <b>{{ object.menu.name }}</b>?</p>
+    <form method="post" class="flex items-center gap-3">
+      {% csrf_token %}
+      <a href="{% url 'menus:menu_detail' object.menu_id %}" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200">Cancel</a>
+      <button class="px-4 py-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700">Delete</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

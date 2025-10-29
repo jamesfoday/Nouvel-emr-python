@@ -695,7 +695,7 @@ def book_appt_slots(request):
         date_to=dt,
         duration_minutes=duration,
         step_minutes=None,
-        patient_id=None,  # if you want to bias results by patient constraints, pass id here
+        patient_id=None,  
         limit=40,
     )
 

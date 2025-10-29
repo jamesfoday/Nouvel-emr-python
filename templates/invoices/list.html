@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-6 md:p-8 max-w-6xl mx-auto space-y-6 rounded-b-2xl rounded-t-2xl ring-1 ring-emerald-900/10 bg-white/60 supports-[backdrop-filter]:bg-white/40 backdrop-blur p-5 mt-0">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between gap-3 flex-wrap">
+    <h1 class="text-2xl font-semibold text-emerald-900">Invoices</h1>
+    <div class="flex gap-2">
+      <!-- Home -->
+      <a href="{% url 'reception:dashboard' %}"
+         class="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+        Home
+      </a>
+      <!-- Create -->
+      <a href="{% url 'invoices:create' %}"
+         class="rounded-full bg-emerald-600 text-white px-4 py-2 text-sm font-semibold hover:bg-emerald-700">
+        + Create
+      </a>
+    </div>
+  </div>
+
+  <!-- Search & quick filters -->
+  <form method="get" class="flex flex-col sm:flex-row gap-2 sm:items-center">
+    <input
+      type="text"
+      name="q"
+      value="{{ q }}"
+      placeholder="Search number, patient name, or email…"
+      class="w-full rounded-full px-4 py-2 ring-1 ring-emerald-900/10 bg-emerald-50/60"
+    />
+    <div class="flex gap-2">
+      <button class="rounded-full px-4 py-2 bg-gray-900 text-white">Filter</button>
+      {% if q %}
+        <a href="{% url 'invoices:list' %}" class="rounded-full px-4 py-2 ring-1 ring-emerald-900/10 bg-white/80 hover:bg-white">Reset</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <!-- Optional quick status links -->
+  <div class="flex flex-wrap gap-2 text-xs">
+    <a href="?q=paid" class="rounded-full px-3 py-1 ring-1 ring-emerald-900/10 bg-white/70 hover:bg-white">Paid</a>
+    <a href="?q=sent" class="rounded-full px-3 py-1 ring-1 ring-emerald-900/10 bg-white/70 hover:bg-white">Sent</a>
+    <a href="?q=draft" class="rounded-full px-3 py-1 ring-1 ring-emerald-900/10 bg-white/70 hover:bg-white">Draft</a>
+    <a href="?q=overdue" class="rounded-full px-3 py-1 ring-1 ring-emerald-900/10 bg-white/70 hover:bg-white">Overdue</a>
+  </div>
+
+  <!-- List -->
+  <ul class="space-y-4">
+    {% for inv in invoices %}
+      <li class="rounded-[28px] bg-white/90 supports-[backdrop-filter]:bg-white/70 backdrop-blur ring-1 ring-emerald-900/10 shadow-sm px-5 py-4">
+        <div class="flex flex-col md:flex-row md:items-start gap-3 md:gap-4">
+
+          <!-- Left: meta -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <div class="font-semibold text-emerald-950 truncate">
+                {{ inv.number }}
+              </div>
+              {% if inv.status == 'paid' %}
+                <span class="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-xs">Paid</span>
+              {% elif inv.status == 'sent' %}
+                <span class="inline-flex items-center rounded-full bg-blue-100 text-blue-800 px-2 py-0.5 text-xs">Sent</span>
+              {% elif inv.status == 'overdue' %}
+                <span class="inline-flex items-center rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-xs">Overdue</span>
+              {% elif inv.status == 'void' %}
+                <span class="inline-flex items-center rounded-full bg-gray-200 text-gray-700 px-2 py-0.5 text-xs">Void</span>
+              {% else %}
+                <span class="inline-flex items-center rounded-full bg-gray-100 text-gray-700 px-2 py-0.5 text-xs">Draft</span>
+              {% endif %}
+            </div>
+
+            <div class="mt-0.5 text-sm text-emerald-950">
+              {{ inv.customer.full_name }}
+              <span class="text-gray-500">• {{ inv.customer.email|default:"—" }}</span>
+            </div>
+
+            <div class="text-sm text-emerald-900/80">
+              Issued {{ inv.issued_at|date:"d M Y" }}
+              {% if inv.due_at %} • Due {{ inv.due_at|date:"d M Y" }}{% endif %}
+            </div>
+          </div>
+
+          <!-- Right: total + actions -->
+          <div class="flex flex-col items-stretch md:items-end gap-2 md:min-w-[260px]">
+            <div class="text-right">
+              <div class="text-sm text-emerald-900/70">Total</div>
+              <div class="text-lg font-semibold text-emerald-900">{{ inv.total }} {{ inv.currency }}</div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2">
+              <!-- Black buttons -->
+              <a href="{% url 'invoices:detail' inv.pk %}"
+                 class="rounded-full px-3 py-1.5 text-xs bg-gray-900 text-white hover:bg-black">
+                View
+              </a>
+              <a href="{% url 'invoices:pdf' inv.pk %}"
+                 class="rounded-full px-3 py-1.5 text-xs bg-gray-900 text-white hover:bg-black">
+                Download
+              </a>
+
+              <a href="{% url 'invoices:edit' inv.pk %}"
+                 class="rounded-full px-3 py-1.5 text-xs bg-emerald-600 text-white hover:bg-emerald-700">
+                Edit
+              </a>
+              <form method="post" action="{% url 'invoices:delete' inv.pk %}"
+                    onsubmit="return confirm('Delete this invoice?')">
+                {% csrf_token %}
+                <button class="rounded-full px-3 py-1.5 text-xs bg-red-600 text-white hover:bg-red-700">
+                  Delete
+                </button>
+              </form>
+            </div>
+          </div>
+
+        </div>
+      </li>
+    {% empty %}
+      <li class="rounded-3xl ring-1 ring-emerald-900/10 bg-emerald-50/70 p-6 text-emerald-900/70">
+        No invoices yet. Click <span class="font-semibold">+ Create</span> to make your first one.
+      </li>
+    {% endfor %}
+  </ul>
+
+  <!-- Load more (optional) -->
+  <div class="pt-2 flex justify-end">
+    <a href="?page={{ next_page }}&q={{ q }}" class="rounded-full px-4 py-2 text-sm ring-1 ring-emerald-900/10 bg-white/80 hover:bg-white">Load more</a>
+  </div>
+
+</div>
+{% endblock %}

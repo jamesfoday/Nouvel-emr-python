@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="min-h-[70vh] grid place-items-center p-6">
+  <form method="post" class="w-full max-w-md space-y-4 rounded-3xl bg-white/90 ring-1 ring-emerald-900/10 p-6">
+    <h1 class="text-3xl font-semibold text-center text-emerald-900 mb-2">Inquiry</h1>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div>{{ form.name }}</div>
+    <div>{{ form.email }}</div>
+    <div>{{ form.message }}</div>
+    <button class="w-full rounded-xl bg-emerald-600 text-white py-2.5 font-semibold hover:bg-emerald-700">Send</button>
+  </form>
+</div>
+{% endblock %}

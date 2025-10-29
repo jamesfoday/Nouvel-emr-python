@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-6 md:p-8 space-y-6 max-w-5xl mx-auto">
+  <h1 class="text-2xl font-semibold text-emerald-900">Choose a plan</h1>
+
+
+  {% if request.user.is_staff %}
+  <a href="{% url 'subscriptions:plan_create' %}"
+     class="inline-flex items-center gap-2 rounded-full bg-emerald-600 text-white px-4 py-2 text-sm font-semibold shadow hover:bg-emerald-700">
+    ＋ Create Plan
+  </a>
+{% endif %}
+
+
+  {% if sub %}
+    <div class="rounded-2xl bg-white/60 supports-[backdrop-filter]:bg-white/40 backdrop-blur ring-1 ring-emerald-900/10 p-4">
+      <div class="flex items-center justify-between">
+        <div class="text-emerald-900/80">
+          Current plan: <span class="font-semibold">{{ sub.plan.name }}</span>
+          <span class="text-sm ml-2">Renews {{ sub.current_period_end|date:"M d, Y" }}</span>
+          {% if sub.cancel_at_period_end %}<span class="ml-2 text-red-600">Cancels at period end</span>{% endif %}
+        </div>
+        <div class="flex gap-2">
+          {% if sub.cancel_at_period_end %}
+            <form method="post" action="{% url 'subscriptions:resume' %}">{% csrf_token %}
+              <button class="rounded-full px-4 py-2 bg-emerald-600 text-white text-sm">Resume</button>
+            </form>
+          {% else %}
+            <form method="post" action="{% url 'subscriptions:cancel' %}">{% csrf_token %}
+              <button class="rounded-full px-4 py-2 bg-red-600 text-white text-sm">Cancel</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    {% for p in plans %}
+      <form method="post" action="{% url 'subscriptions:subscribe' %}"
+            class="rounded-3xl bg-white/55 supports-[backdrop-filter]:bg-white/35 backdrop-blur-md ring-1 ring-emerald-900/10 shadow hover:ring-emerald-900/20 transition flex flex-col">
+        {% csrf_token %}
+        <input type="hidden" name="plan_slug" value="{{ p.slug }}">
+        <div class="p-5 space-y-3 flex-1">
+          <div class="text-lg font-semibold text-emerald-950">{{ p.name }}</div>
+          <div class="text-3xl font-bold text-emerald-800">{{ p.price_display }}</div>
+          <ul class="mt-2 text-sm text-emerald-950/80 space-y-1">
+            <li>👥 Up to {{ p.max_staff }} staff</li>
+            <li>🧑‍⚕️ Up to {{ p.max_patients }} patients</li>
+            <li>🗂️ {{ p.storage_mb }} MB storage</li>
+          </ul>
+        </div>
+        <div class="p-5 pt-0">
+          <button class="w-full rounded-full bg-emerald-600 text-white font-semibold px-4 py-2 hover:bg-emerald-700">
+            {% if sub and sub.plan_id == p.id %}Current Plan{% else %}Choose {{ p.name }}{% endif %}
+          </button>
+        </div>
+      </form>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

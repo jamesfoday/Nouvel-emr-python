@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block appbar_right %}
+  <form method="post" action="{% url 'logout' %}" class="m-0">
+    {% csrf_token %}
+    <button
+      type="submit"
+      class="inline-flex items-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-3 md:px-4 py-1.5 md:py-2 text-sm font-medium shadow-sm"
+      title="Sign out"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1"/>
+      </svg>
+      <span class="hidden sm:inline">Logout</span>
+      <span class="sm:hidden">Sign out</span>
+    </button>
+  </form>
+{% endblock %}
+
+{% block content %}
+
+
+
+<div class="p-6 space-y-6 pb-28 md:pb-6">
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+    {# -- Profile card ------------------------------------------------------ #}
+    <div class="bg-teal-500 text-white rounded-3xl p-8 lg:p-10 flex flex-col items-center text-center shadow-sm">
+      <div class="w-44 h-44 rounded-full bg-white grid place-items-center overflow-hidden">
+        {% if profile.avatar %}
+          <img src="{{ profile.avatar.url }}?v={{ profile.avatar.size }}" alt="Avatar" class="w-40 h-40 object-cover rounded-full">
+        {% else %}
+          <img src="{% static 'img/avatar-doc.png' %}" alt="Avatar" class="w-40 h-40 object-cover rounded-full">
+        {% endif %}
+      </div>
+
+      <a href="{% url 'reception:profile_edit' %}"
+         class="mt-3 inline-block text-emerald-900/90 bg-white/90 hover:bg-white px-4 py-1.5 rounded-full text-sm font-medium">
+        edit
+      </a>
+
+      <div class="text-2xl md:text-4xl font-extrabold tracking-tight mt-6">
+        {{ request.user.get_full_name|default:request.user.username }}
+      </div>
+      <div class="opacity-90 mt-1 text-white/90 text-base">reception</div>
+    </div>
+
+    {# -- Doctors appointments (next 48h) ---------------------------------- #}
+    <div class="lg:col-span-2">
+      <div class="bg-white rounded-2xl p-4 ring-1 ring-black/5 h-full min-h-[360px] flex flex-col overflow-hidden">
+        <!-- Header: stacks on mobile, aligns on desktop -->
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-2">
+          <div class="flex items-center justify-between">
+            <div class="text-base sm:text-lg font-semibold">Doctors appointment</div>
+            <div class="text-xs text-gray-500 sm:hidden ml-3">Next 48h</div>
+          </div>
+
+          <div class="flex items-center gap-2 sm:order-none order-3">
+           <a href="{% url 'reception:appt_hub' %}"
+            class="inline-flex items-center rounded-xl bg-gray-200/70 px-3 py-1.5 text-sm font-medium text-gray-800">
+            See all
+            </a>
+            <a href="#"
+               class="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-900">
+              Book <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-white">+</span>
+            </a>
+          </div>
+
+          <div class="hidden sm:block text-xs text-gray-500">Next 48h</div>
+        </div>
+
+        <!-- Body -->
+        <div class="flex-1">
+          <div class="divide-y">
+            {% for a in next48 %}
+              <!-- Row: column layout on mobile, row on desktop -->
+              <div class="py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                <!-- Patient + time (flexible) -->
+                <div class="flex items-start gap-3 sm:flex-[1_1_50%] min-w-0">
+                  <div class="mt-0.5 w-8 h-8 shrink-0 rounded-full bg-emerald-100 grid place-items-center font-semibold">
+                    {{ a.patient|stringformat:"s"|slice:":1"|upper|default:"?" }}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-sm font-semibold truncate">
+                      {{ a.patient }}{% if a.patient.dob %} <span class="text-gray-500">({{ a.patient.dob }})</span>{% endif %}
+                    </div>
+                    <div class="text-xs text-gray-500">{{ a.start|date:"D, M d · H:i" }} · {{ a.mode|default:"online" }}</div>
+                  </div>
+                </div>
+
+                <!-- Clinician (truncated on desktop) -->
+                <div class="sm:flex-[0_0_auto] sm:text-right min-w-0">
+                  <div class="text-xs text-gray-500">By</div>
+                  <div class="text-sm font-medium truncate max-w-[240px]">
+                    {{ a.clinician }}
+                  </div>
+                </div>
+
+                <!-- Actions (fixed) -->
+                <div class="sm:flex-[0_0_auto] flex gap-2 sm:justify-end">
+                  <button
+                    hx-post="{% url 'reception:appt_remind' a.pk %}"
+                    hx-trigger="click"
+                    hx-swap="none"
+                    class="px-3 py-1 text-xs rounded-xl bg-gray-900 text-white">
+                    Reminder
+                  </button>
+                  <button
+                    hx-post="{% url 'reception:appt_cancel' a.pk %}"
+                    hx-confirm="Cancel this appointment?"
+                    hx-trigger="click"
+                    hx-swap="none"
+                    class="px-3 py-1 text-xs rounded-xl bg-red-100 text-red-700">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            {% empty %}
+              <div class="p-6 text-sm text-gray-500">No appointments in the next 48 hours.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# -- Services inquiry (recent) ---------------------------------------- #}
+    <div class="rounded-3xl bg-white/60 ring-1 ring-black/5 p-4 min-h-[140px]">
+      <div class="flex items-center justify-between mb-2">
+        <div class="font-medium">Services inquiry</div>
+        <a href="{% url 'inquiry:list' %}"
+           class="inline-flex items-center rounded-xl bg-gray-200/70 px-3 py-1.5 text-sm font-medium text-gray-800">
+          See all
+        </a>
+      </div>
+
+      <div class="space-y-3">
+        {% for q in recent_inquiries %}
+          <div class="flex items-center justify-between border rounded-xl px-3 py-2">
+            <div>
+              <div class="text-sm font-medium">{{ q.name }}</div>
+              <div class="text-xs text-gray-500">{{ q.created_at|date:"M d" }}</div>
+            </div>
+            <button
+              class="text-xs px-3 py-1 rounded-xl bg-gray-900 text-white"
+              hx-get="{% url 'reception:inquiry_view' q.pk %}"
+              hx-target="#modal"
+              hx-swap="innerHTML"
+              hx-trigger="click">
+              View Info
+            </button>
+          </div>
+        {% empty %}
+          <div class="p-6 text-sm text-gray-500">No recent inquiries.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# ---------- Shortcuts (left) + Messages (right) ---------------------- #}
+    <div class="lg:col-span-4">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+        {# Shortcuts card --------------------------------------------------- #}
+        <div class="bg-white rounded-2xl p-6 ring-1 ring-black/5">
+          <div class="grid grid-cols-2 gap-6">
+            <a href="{% url 'inquiry:list' %}"
+               class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
+              <div class="flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 shadow-inner">
+                <img src="{% static 'img/shortcuts/inquiry.svg' %}" alt="Inquiries" onerror="this.style.display='none'">
+              </div>
+              <div class="text-base font-semibold">Inquiries</div>
+            </a>
+
+            <a href="{% url 'services:list' %}" 
+               class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
+              <div class="flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 shadow-inner">
+                <img src="{% static 'img/shortcuts/services.svg' %}" alt="Services" onerror="this.style.display='none'">
+              </div>
+              <div class="text-base font-semibold">Services</div>
+            </a>
+
+            <a href="{% url 'invoices:list' %}"
+               class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
+              <div class="flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 shadow-inner">
+                <img src="{% static 'img/shortcuts/doc.svg' %}" alt="Invoice" onerror="this.style.display='none'">
+              </div>
+              <div class="text-base font-semibold">Invoice</div>
+            </a>
+
+            <a href="{% url 'healthplans:staff_plans' %}"
+               class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
+              <div class="flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 shadow-inner">
+                <img src="{% static 'img/shortcuts/subscription.svg' %}" alt="Subscription" onerror="this.style.display='none'">
+              </div>
+              <div class="text-base font-semibold">Subscription</div>
+            </a>
+
+            <a href="{% url 'bugtracker:list' %}"
+               class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
+              <div class="flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 shadow-inner">
+                <img src="{% static 'img/shortcuts/bug.svg' %}" alt="Bug" onerror="this.style.display='none'">
+              </div>
+              <div class="text-base font-semibold">Bug</div>
+            </a>
+
+            <!--  Wired to Reception → Patients list -->
+            <a href="{% url 'patients_ui:reception_patients_list' %}"
+               class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
+              <div class="flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 shadow-inner">
+                <img src="{% static 'img/shortcuts/people.svg' %}" alt="Patient" onerror="this.style.display='none'">
+              </div>
+              <div class="text-base font-semibold">Patient</div>
+            </a>
+
+          </div>
+        </div>
+
+        {# ---------------- Messages card (DM inbox like clinician) --------- #}
+        <div class="lg:col-span-3 bg-white rounded-2xl ring-1 ring-black/5 overflow-hidden">
+          {% include "reception/partials/inbox.html" with tab="dm" %}
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{# ------------------------- Mobile dock ----------------------------------- #}
+<div class="mobile-dock md:hidden ">
+  <div class="mobile-dock__row">
+    <a href="{% url 'inquiry:list' %}" class="dock-btn">
+      <span class="dock-btn__circle">
+        <img src="{% static 'img/shortcuts/inquiries.svg' %}" alt="" onerror="this.remove()">
+      </span>
+      <span class="dock-btn__label">Inquiries</span>
+    </a>
+
+    <button type="button" class="dock-btn dock-btn--primary" id="dock-open">
+      <span class="dock-btn__circle">
+        <svg viewBox="0 0 24 24" class="w-8 h-8" fill="currentColor" aria-hidden="true">
+          <circle cx="8" cy="8" r="3"></circle>
+          <circle cx="16" cy="8" r="3"></circle>
+          <circle cx="8" cy="16" r="3"></circle>
+          <circle cx="16" cy="16" r="3"></circle>
+        </svg>
+      </span>
+      <span class="dock-btn__label">More</span>
+    </button>
+
+    <!--  Wired Patients (mobile) -->
+    <a href="{% url 'patients_ui:reception_patients_list' %}" class="dock-btn">
+      <span class="dock-btn__circle">
+        <img src="{% static 'img/shortcuts/patient.svg' %}" alt="" onerror="this.remove()">
+      </span>
+      <span class="dock-btn__label">Patients</span>
+    </a>
+  </div>
+</div>
+
+<div id="offcanvas" class="offcanvas md:hidden" aria-hidden="true">
+  <div class="offcanvas__mask" id="oc-mask"></div>
+  <div class="offcanvas__panel" role="dialog" aria-modal="true" aria-label="Quick actions">
+    <div class="flex items-center justify-between mb-3">
+      <div class="font-semibold">Menu</div>
+      <button type="button" id="dock-close" class="btn">✕</button>
+    </div>
+
+    <div class="offcanvas__list">
+      <a href="{% url 'services:list' %}" class="offcanvas__item">
+        <span class="offcanvas__circle"><img src="{% static 'img/shortcuts/services.svg' %}" alt="" onerror="this.remove()"></span>
+        <span class="offcanvas__label">Services</span>
+      </a>
+      <a href="{% url 'invoices:list' %}" class="offcanvas__item">
+        <span class="offcanvas__circle"><img src="{% static 'img/shortcuts/invoice.svg' %}" alt="" onerror="this.remove()"></span>
+        <span class="offcanvas__label">Invoice</span>
+      </a>
+      <a href="{% url 'healthplans:staff_plans' %}" class="offcanvas__item">
+        <span class="offcanvas__circle"><img src="{% static 'img/shortcuts/subscription.svg' %}" alt="" onerror="this.remove()"></span>
+        <span class="offcanvas__label">Subscription</span>
+      </a>
+      <a href="{% url 'bugtracker:list' %}" class="offcanvas__item">
+        <span class="offcanvas__circle bg-red-500 text-white border-transparent">🚨</span>
+        <span class="offcanvas__label">Bug</span>
+      </a>
+      <!-- Patients shortcut (off-canvas) -->
+      <a href="{% url 'patients_ui:reception_patients_list' %}" class="offcanvas__item">
+        <span class="offcanvas__circle"><img src="{% static 'img/shortcuts/patient.svg' %}" alt="" onerror="this.remove()"></span>
+        <span class="offcanvas__label">Patients</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Mobile offcanvas
+  const ocRoot   = document.getElementById('offcanvas');
+  const ocMask   = document.getElementById('oc-mask');
+  const openBtn  = document.getElementById('dock-open');
+  const closeBtn = document.getElementById('dock-close');
+  function openOC(){ ocRoot.classList.add('is-open'); document.body.style.overflow = 'hidden'; }
+  function closeOC(){ ocRoot.classList.remove('is-open'); document.body.style.overflow = ''; }
+  openBtn?.addEventListener('click', openOC);
+  closeBtn?.addEventListener('click', closeOC);
+  ocMask?.addEventListener('click', closeOC);
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeOC(); });
+
+  // Message tabs visual toggle (kept for future)
+  document.querySelectorAll('.msg-tab')?.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.msg-tab').forEach(b=>b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+    });
+  });
+</script>
+
+{% endblock %}

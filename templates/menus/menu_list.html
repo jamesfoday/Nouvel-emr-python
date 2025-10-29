@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-6xl mx-auto p-6 space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold">Menus</h1>
+    <a href="{% url 'menus:menu_create' %}" class="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">Create Menu</a>
+  </div>
+
+  <div class="overflow-hidden rounded-2xl border bg-white">
+    <table class="w-full text-left">
+      <thead class="bg-slate-50">
+        <tr>
+          <th class="px-4 py-3">Name</th>
+          <th class="px-4 py-3">Key</th>
+          <th class="px-4 py-3">Active</th>
+          <th class="px-4 py-3">Items</th>
+          <th class="px-4 py-3 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in menus %}
+        <tr class="border-t">
+          <td class="px-4 py-3 font-medium">{{ m.name }}</td>
+          <td class="px-4 py-3">{{ m.key }}</td>
+          <td class="px-4 py-3">
+            {% if m.is_active %}<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-xs">Active</span>
+            {% else %}<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-xs">Disabled</span>{% endif %}
+          </td>
+          <td class="px-4 py-3">{{ m.items.count }}</td>
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-2 justify-end">
+              <a href="{% url 'menus:menu_detail' m.pk %}" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200">View</a>
+              <a href="{% url 'menus:menu_edit' m.pk %}" class="px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200">Edit</a>
+              <a href="{% url 'menus:menu_delete' m.pk %}" class="px-3 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200">Delete</a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">No menus yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

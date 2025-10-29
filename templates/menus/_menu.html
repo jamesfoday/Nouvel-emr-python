@@ -1,0 +1,8 @@
+{# expects: menu_items, css_class, request #}
+<ul class="{{ css_class|default:'flex items-center gap-6' }}">
+  {% for item in menu_items %}
+    {% include "menus/_menu_item.html" with item=item is_top=True %}
+  {% empty %}
+    {# nothing to render #}
+  {% endfor %}
+</ul>

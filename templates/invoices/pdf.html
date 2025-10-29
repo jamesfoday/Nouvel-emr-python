@@ -1,0 +1,137 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ invoice.number }} · Invoice</title>
+  <style>
+    /* ---- Reset-ish ---- */
+    @page { size: A4; margin: 22mm; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif; color:#064e3b; }
+    .muted { color: #6b7280; }
+    .card {
+      border: 1px solid rgba(6,78,59,.10);
+      border-radius: 18px;
+      padding: 18px 22px;
+    }
+    .header-row { display:flex; justify-content:space-between; align-items:flex-start; }
+    .title { font-size: 18px; font-weight: 600; color:#064e3b; }
+    .subtitle { font-size: 12px; color:#6b7280; }
+    .pill { font-size: 10px; padding: 2px 8px; border-radius: 9999px; }
+    .pill-blue { background:#dbeafe; color:#1e40af; }
+    .pill-emerald { background:#d1fae5; color:#065f46; }
+    .pill-red { background:#fee2e2; color:#b91c1c; }
+    .pill-gray { background:#f3f4f6; color:#374151; }
+    hr { border: none; border-top: 1px solid rgba(6,78,59,.12); margin:14px 0; }
+
+    .grid { display:grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+    .right { text-align:right; }
+
+    .table {
+      width:100%; border: 1px solid rgba(6,78,59,.10); border-radius:14px; overflow:hidden;
+      border-collapse: separate; border-spacing:0;
+    }
+    .thead { background:#059669; color:white; }
+    .thead th { font-size:12px; text-align:left; padding:8px 10px; }
+    .tbody td { font-size:12px; padding:8px 10px; border-top:1px solid rgba(6,78,59,.08); }
+    .td-right { text-align:right; }
+
+    .totals { margin-top:12px; font-size:12px; }
+    .totals-row { display:flex; justify-content:space-between; margin:3px 0; }
+    .totals-row.total { font-weight:600; color:#064e3b; }
+
+    .notes { margin-top:14px; }
+    .notes-title { font-size:12px; color: rgba(6,78,59,.8); font-weight:600; margin-bottom:6px; }
+    .notes-box { border: 1px solid rgba(6,78,59,.10); background: rgba(236,253,245,.6); border-radius:12px; padding:10px; font-size:12px; color:#065f46; }
+
+    /* Make links normal text in PDFs */
+    a { color: inherit; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- Header -->
+    <div class="header-row">
+      <div>
+        <div class="title">Nouvel Healthcare System</div>
+        <div class="subtitle">Invoice</div>
+      </div>
+      <div class="right">
+        <div class="subtitle">#{{ invoice.number }}</div>
+        <div style="margin-top:4px;">
+          {% if invoice.status == 'paid' %}
+            <span class="pill pill-emerald">Paid</span>
+          {% elif invoice.status == 'sent' %}
+            <span class="pill pill-blue">Sent</span>
+          {% elif invoice.status == 'overdue' %}
+            <span class="pill pill-red">Overdue</span>
+          {% elif invoice.status == 'void' %}
+            <span class="pill pill-gray">Void</span>
+          {% else %}
+            <span class="pill pill-gray">{{ invoice.get_status_display }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <hr />
+
+    <!-- Meta -->
+    <div class="grid">
+      <div>
+        <div class="muted">Billed to</div>
+        <div style="font-weight:600; color:#064e3b;">{{ invoice.customer.full_name }}</div>
+        <div class="muted">{{ invoice.customer.email|default:"—" }}</div>
+      </div>
+      <div class="right">
+        <div>Issue Date: {{ invoice.issued_at|date:"d M Y" }}</div>
+        {% if invoice.due_at %}<div>Due Date: {{ invoice.due_at|date:"d M Y" }}</div>{% endif %}
+        <div>Currency: {{ invoice.currency }}</div>
+      </div>
+    </div>
+
+    <!-- Items -->
+    <div style="margin-top:14px;">
+      <table class="table">
+        <thead class="thead">
+          <tr>
+            <th style="width:6%;">No</th>
+            <th style="width:60%;">Description</th>
+            <th style="width:12%;">Qty</th>
+            <th style="width:12%;">Unit</th>
+            <th style="width:10%; text-align:right;">Line total</th>
+          </tr>
+        </thead>
+        <tbody class="tbody">
+          {% for it in invoice.items.all %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ it.description }}</td>
+              <td>{{ it.qty }}</td>
+              <td>{{ it.unit_price }}</td>
+              <td class="td-right">{{ it.line_total }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="muted">No items.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- Totals -->
+      <div class="totals">
+        <div class="totals-row"><span>Sub Total</span><span>{{ invoice.subtotal }} {{ invoice.currency }}</span></div>
+        <div class="totals-row"><span>Tax ({{ invoice.tax_rate }}%)</span><span>{{ invoice.tax_amount }} {{ invoice.currency }}</span></div>
+        <div class="totals-row total"><span>Grand Total</span><span>{{ invoice.total }} {{ invoice.currency }}</span></div>
+      </div>
+
+      {% if invoice.note %}
+        <div class="notes">
+          <div class="notes-title">Notes</div>
+          <div class="notes-box">{{ invoice.note|linebreaksbr }}</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

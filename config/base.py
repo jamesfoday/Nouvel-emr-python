@@ -40,6 +40,16 @@ INSTALLED_APPS = [
     "apps.encounters",
     "apps.labs",
     "apps.portal",
+    "apps.reception",
+    "apps.services",
+    "apps.subscriptions",
+    "apps.healthplans",
+    "apps.invoices",
+    "apps.inquiry",
+    "apps.bugtracker",
+    "apps.core",
+    "apps.menus.apps.MenusConfig",
+    
 ]
 
 # --- middleware --------------------------------------------------------------
@@ -75,6 +85,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.menus.context_processors.menus_debug",
             ],
         },
     },

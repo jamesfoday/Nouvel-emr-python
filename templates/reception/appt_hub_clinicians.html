@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="p-6 space-y-5">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl sm:text-2xl font-bold tracking-tight">Clinicians</h1>
+    <a href="{% url 'reception:dashboard' %}"
+       class="nline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700">
+      Home
+    </a>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+    {% for c in page_obj.object_list %}
+      <div class="rounded-2xl bg-white ring-1 ring-black/5 p-4 flex flex-col gap-3 hover:bg-gray-50 transition">
+        <!-- Identity -->
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-900 grid place-items-center font-semibold shrink-0">
+            {# Initial without parentheses / complex chaining #}
+            {% if c.clinician__first_name %}
+              {{ c.clinician__first_name|first|upper }}
+            {% elif c.clinician__last_name %}
+              {{ c.clinician__last_name|first|upper }}
+            {% else %}
+              {{ c.clinician__username|first|upper }}
+            {% endif %}
+          </div>
+          <div class="min-w-0">
+            <div class="text-base font-semibold truncate">
+              {% if c.clinician__first_name or c.clinician__last_name %}
+                {{ c.clinician__first_name|default_if_none:'' }} {{ c.clinician__last_name|default_if_none:'' }}
+              {% else %}
+                {{ c.clinician__username }}
+              {% endif %}
+            </div>
+            <div class="text-xs text-gray-500 truncate">ID: {{ c.clinician_id }}</div>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs ring-1 ring-emerald-200 bg-emerald-50 text-emerald-900">
+            Upcoming: {{ c.upcoming|default:0 }}
+          </span>
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs ring-1 ring-gray-200 bg-gray-50 text-gray-800">
+            Total: {{ c.total|default:0 }}
+          </span>
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs ring-1 ring-red-200 bg-red-50 text-red-700">
+            Cancelled: {{ c.cancelled|default:0 }}
+          </span>
+        </div>
+
+        <!-- Actions -->
+        <div class="mt-1 grid grid-cols-2 gap-2">
+          <a href="{% url 'reception:appt_hub_for_clinician' c.clinician_id %}"
+             class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100">
+            View hub
+          </a>
+          <a href="{% url 'reception:book_calendar' %}?clinician={{ c.clinician_id }}"
+             class="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+            Book
+          </a>
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-span-full text-gray-500 text-sm">No clinicians found.</div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if page_obj.paginator.num_pages > 1 %}
+    <div class="flex justify-center items-center gap-2 text-sm mt-4">
+      {% if page_obj.has_previous %}
+        <a class="px-3 py-1 rounded-xl bg-white ring-1 ring-gray-200 hover:bg-gray-50"
+           href="?page={{ page_obj.previous_page_number }}">Prev</a>
+      {% endif %}
+      <span class="px-3 py-1">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a class="px-3 py-1 rounded-xl bg-white ring-1 ring-gray-200 hover:bg-gray-50"
+           href="?page={{ page_obj.next_page_number }}">Next</a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

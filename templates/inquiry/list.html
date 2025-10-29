@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-6 md:p-8 mx-auto space-y-6  max-w-5xl mx-4 sm:mx-6 md:mx-auto rounded-2xl ring-1 ring-emerald-900/10 bg-white/60 supports-[backdrop-filter]:bg-white/40 backdrop-blur mt-0">
+  <div class="flex items-center justify-between gap-3 flex-wrap">
+    <div class="flex items-center gap-3">
+      <a href="{% url 'reception:dashboard' %}" class="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+        Home
+      </a>
+      <h1 class="text-2xl font-semibold text-emerald-900">Inquiries</h1>
+    </div>
+    <a href="{% url 'inquiry:create' %}" class="rounded-full px-4 py-2 text-sm bg-gray-900 text-white">Public form</a>
+  </div>
+
+  <form method="get" class="flex flex-col sm:flex-row gap-2 sm:items-center">
+    <input name="q" value="{{ q }}" placeholder="Search name, email, or text…"
+           class="w-full rounded-full px-4 py-2 ring-1 ring-emerald-900/10 bg-emerald-50/60">
+    <select name="status" class="rounded-full px-3 py-2 ring-1 ring-emerald-900/10 bg-white/80">
+      <option value="">All statuses</option>
+      <option value="new" {% if status == 'new' %}selected{% endif %}>New</option>
+      <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>In progress</option>
+      <option value="closed" {% if status == 'closed' %}selected{% endif %}>Closed</option>
+    </select>
+    <div class="flex gap-2">
+      <button class="rounded-full px-4 py-2 bg-gray-900 text-white">Filter</button>
+      {% if q or status %}
+      <a href="{% url 'inquiry:list' %}" class="rounded-full px-4 py-2 ring-1 ring-emerald-900/10 bg-white/80 hover:bg-white">Reset</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <ul class="space-y-3">
+    {% for it in inquiries %}
+      <li class="rounded-3xl ring-1 ring-emerald-900/10 bg-white/90 px-5 py-4 flex flex-col md:flex-row md:items-start gap-3">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <div class="font-semibold text-emerald-950 truncate">{{ it.name }}</div>
+            <span class="text-xs text-gray-500 truncate">{{ it.email }}</span>
+            {% if it.status == 'new' %}
+              <span class="rounded-full bg-blue-100 text-blue-800 px-2 py-0.5 text-xs">New</span>
+            {% elif it.status == 'in_progress' %}
+              <span class="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs">In progress</span>
+            {% else %}
+              <span class="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-xs">Closed</span>
+            {% endif %}
+          </div>
+          <div class="text-sm text-emerald-900/80 line-clamp-2 mt-1">{{ it.message }}</div>
+          <div class="text-xs text-gray-500 mt-1">{{ it.created_at|date:"d M Y, H:i" }}</div>
+        </div>
+        <div class="md:min-w-[160px] flex items-center justify-end gap-2">
+          <a href="{% url 'inquiry:detail' it.pk %}" class="rounded-full px-3 py-1.5 text-xs bg-gray-900 text-white">View</a>
+        </div>
+      </li>
+    {% empty %}
+      <li class="rounded-3xl ring-1 ring-emerald-900/10 bg-emerald-50/70 p-6 text-emerald-900/70">No inquiries yet.</li>
+    {% endfor %}
+  </ul>
+
+  {% if inquiries.has_other_pages %}
+  <div class="pt-2 flex justify-end gap-2">
+    {% if inquiries.has_previous %}
+      <a class="rounded-full px-3 py-1.5 ring-1 ring-emerald-900/10 bg-white/80" href="?page={{ inquiries.previous_page_number }}&q={{ q }}&status={{ status }}">Prev</a>
+    {% endif %}
+    <span class="text-sm text-emerald-900/70">Page {{ inquiries.number }} / {{ inquiries.paginator.num_pages }}</span>
+    {% if inquiries.has_next %}
+      <a class="rounded-full px-3 py-1.5 ring-1 ring-emerald-900/10 bg-white/80" href="?page={{ inquiries.next_page_number }}&q={{ q }}&status={{ status }}">Next</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

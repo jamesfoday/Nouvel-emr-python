@@ -26,4 +26,10 @@ urlpatterns = [
 
     # Compact patient picker (used by other modules)
     path("patients/pick/", v.pick_list, name="pick_list"),
+
+    path("reception/patients/", v.reception_patients_list, name="reception_patients_list"),
+    path("reception/patients/create/", v.reception_patient_create, name="reception_patient_create"),
+    path("reception/patients/<int:pk>/activate/", v.reception_patient_activate, name="reception_patient_activate"),
+    path("reception/patients/<int:pk>/deactivate/", v.reception_patient_deactivate, name="reception_patient_deactivate"),
+    path("reception/patients/<int:pk>/toggle/", v.reception_patient_toggle_active, name="reception_patient_toggle_active"),
 ]

@@ -1,0 +1,63 @@
+{% load rbac_tags %}
+
+<div class="rounded-3xl bg-white ring-1 ring-black/5 p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-3">
+
+  <!-- Left: name + meta -->
+  <div class="flex-1 min-w-0">
+    <div class="flex items-center gap-2">
+      <div class="text-base md:text-lg font-semibold truncate">
+        {{ p.family_name }}, {{ p.given_name }}
+      </div>
+      {% if p.external_id %}
+        <span class="text-xs text-slate-500">({{ p.external_id }})</span>
+      {% endif %}
+      {% if p.is_active %}
+        <span class="ml-2 inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-xs px-2 py-0.5">
+          Active
+        </span>
+      {% else %}
+        <span class="ml-2 inline-flex items-center rounded-full bg-rose-50 text-rose-700 text-xs px-2 py-0.5">
+          Inactive
+        </span>
+      {% endif %}
+    </div>
+
+    <div class="mt-1 text-sm text-slate-600 flex flex-wrap gap-x-4 gap-y-1">
+      <span>{{ p.email|default:"—" }}</span>
+      <span>•</span>
+      <span>{{ p.phone|default:"—" }}</span>
+      <!-- <span>•</span> -->
+      <!-- <span>
+        {% if p.primary_clinician %}
+          {{ p.primary_clinician.get_full_name|default:p.primary_clinician.username }}
+        {% elif p.clinicians.all %}
+          {% with first=p.clinicians.first %}
+            {% if first %}{{ first.get_full_name|default:first.username }}{% else %}—{% endif %}
+          {% endwith %}
+        {% else %}—{% endif %}
+      </span> -->
+    </div>
+  </div>
+
+  <!-- Right: actions -->
+  <div class="flex md:flex-none items-center gap-2 md:justify-end">
+    <a href="{% url_or 'patients_ui:detail' p.pk default='#' %}"
+       class="px-3 py-1.5 rounded-xl bg-gray-900 text-white text-sm">
+      View
+    </a>
+    <a href="{% url_or 'patients_ui:edit' p.pk default='#' %}"
+       class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-sm">
+      Edit
+    </a>
+
+    <!-- Inline toggle (same-origin absolute URL) -->
+    <button
+      hx-post="{% absurl_or 'patients_ui:reception_patient_toggle_active' p.pk default='#' %}"
+      hx-target="closest .rounded-3xl"
+      hx-swap="outerHTML"
+      class="px-3 py-1.5 rounded-xl text-sm text-white
+             {% if p.is_active %}bg-rose-600 hover:bg-rose-700{% else %}bg-emerald-600 hover:bg-emerald-700{% endif %}">
+      {% if p.is_active %}Deactivate{% else %}Activate{% endif %}
+    </button>
+  </div>
+</div>

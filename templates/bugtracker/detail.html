@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-6 md:p-8 max-w-3xl mx-auto space-y-6">
+  <div class="flex items-center justify-between gap-3">
+    <h1 class="text-2xl font-semibold text-emerald-900">Bug #{{ bug.id }}</h1>
+    <a href="{% url 'bugtracker:list' %}" class="rounded-full px-3 py-1.5 text-sm ring-1 ring-emerald-900/10 bg-white/80 hover:bg-white">Back</a>
+  </div>
+
+  <div class="rounded-3xl bg-white/90 ring-1 ring-emerald-900/10 shadow p-6 space-y-4">
+    <div class="flex items-center gap-2">
+      <div class="text-lg font-semibold">{{ bug.title }}</div>
+      <span class="text-xs rounded-full bg-gray-100 text-gray-700 px-2 py-0.5">{{ bug.get_status_display }}</span>
+      <span class="text-xs rounded-full bg-amber-100 text-amber-800 px-2 py-0.5">{{ bug.get_severity_display }}</span>
+    </div>
+    <div class="text-sm text-gray-600">
+      Reported by {{ bug.reporter }} on {{ bug.created_at|date:"M d, Y H:i" }}
+      {% if bug.assigned_to %} • Assigned to {{ bug.assigned_to }}{% endif %}
+    </div>
+    {% if bug.page_url %}
+      <div class="text-sm"><span class="text-gray-500">Page:</span> <a href="{{ bug.page_url }}" class="text-emerald-700 underline break-all">{{ bug.page_url }}</a></div>
+    {% endif %}
+    <div class="whitespace-pre-wrap text-emerald-950 text-sm">{{ bug.description }}</div>
+    {% if bug.screenshot %}
+      <div class="pt-2">
+        <img src="{{ bug.screenshot.url }}" alt="screenshot" class="rounded-xl ring-1 ring-emerald-900/10 max-h-96">
+      </div>
+    {% endif %}
+  </div>
+
+  {% if admin_form %}
+  <form method="post" class="rounded-3xl bg-emerald-50/60 ring-1 ring-emerald-900/10 p-6 space-y-3">
+    {% csrf_token %}
+    <div class="grid md:grid-cols-3 gap-4">
+      <label class="block">
+        <span class="block text-sm font-medium mb-1">Status</span>
+        {{ admin_form.status }}
+      </label>
+      <label class="block">
+        <span class="block text-sm font-medium mb-1">Severity</span>
+        {{ admin_form.severity }}
+      </label>
+      <label class="block">
+        <span class="block text-sm font-medium mb-1">Assigned to</span>
+        {{ admin_form.assigned_to }}
+      </label>
+    </div>
+    <label class="block">
+      <span class="block text-sm font-medium mb-1">Resolution note</span>
+      {{ admin_form.resolution_note }}
+    </label>
+    <div class="text-right">
+      <button class="rounded-xl px-5 py-2 bg-gray-900 text-white font-semibold hover:bg-black/90">Save</button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+
+{% block scripts %}
+<script>
+  (function(){
+    document.querySelectorAll('input,select,textarea').forEach(el=>{
+      el.classList.add('w-full','rounded-xl','px-3','py-2','ring-1','ring-gray-200','bg-white','focus:ring-emerald-500','outline-none');
+      if(el.tagName==='TEXTAREA') el.classList.add('min-h-[6rem]');
+    });
+  })();
+</script>
+{% endblock %}
+{% endblock %}

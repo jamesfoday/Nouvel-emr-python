@@ -1,0 +1,60 @@
+{% load menus_tags %}
+
+{# Get top-level items for this menu key #}
+{% menu_items_for menu_key as ROOT_ITEMS %}
+
+<ul class="space-y-2">
+  {% for item in ROOT_ITEMS %}
+    {% if item.is_active and item|can_see:request.user %}
+      {% menu_href item as href %}
+      <li>
+        {# Top-level row --------------------------------------------------- #}
+        {% if item.url_kind == "none" %}
+          <div class="rounded-xl bg-white shadow-sm border border-black/5 px-4 py-3
+                      text-slate-900 font-medium leading-tight break-words">
+            {{ item.label }}
+          </div>
+        {% else %}
+          <a href="{{ href }}"
+             {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
+             class="flex items-start justify-between gap-3 rounded-xl bg-white shadow-sm
+                    border border-black/5 px-4 py-3 text-slate-900 font-medium
+                    leading-tight break-words hover:shadow-md hover:border-[#24B2C1]/30 transition">
+            <span class="block break-words">{{ item.label }}</span>
+            <span class="shrink-0 mt-0.5 opacity-60" aria-hidden="true">›</span>
+          </a>
+        {% endif %}
+
+        {# Children list (vertical & indented) ---------------------------- #}
+        {% with kids=item.children.all|dictsort:"order" %}
+          {% if kids %}
+            <ul class="mt-2 space-y-1">
+              {% for c in kids %}
+                {% if c.is_active and c|can_see:request.user %}
+                  {% menu_href c as chref %}
+                  <li>
+                    {% if c.url_kind == "none" %}
+                      <div class="rounded-lg bg-white shadow-sm border border-black/5 px-3 py-2
+                                  text-slate-800 text-[14px] leading-tight break-words">
+                        {{ c.label }}
+                      </div>
+                    {% else %}
+                      <a href="{{ chref }}"
+                         {% if c.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
+                         class="flex items-start justify-between gap-3 rounded-lg bg-white shadow-sm
+                                border border-black/5 px-3 py-2 text-slate-800 text-[14px]
+                                leading-tight break-words hover:shadow-md hover:border-[#24B2C1]/30 transition">
+                        <span class="block break-words">{{ c.label }}</span>
+                        <span class="shrink-0 opacity-60" aria-hidden="true">›</span>
+                      </a>
+                    {% endif %}
+                  </li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+      </li>
+    {% endif %}
+  {% endfor %}
+</ul>

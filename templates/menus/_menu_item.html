@@ -1,0 +1,137 @@
+{% load menus_tags %}
+
+<li class="{% if 'mobi' in extra_classes %}block border-t border-slate-100 first:border-none{% else %}relative group{% endif %}">
+  {% menu_href item as href %}
+  {% with kids=item.children.all|dictsort:'order' %}
+
+    {# ---------- Top-level link / label ---------- #}
+    {% if item.url_kind == 'none' %}
+      <button type="button"
+              class="{% if 'mobi' in extra_classes %}
+                        w-full text-left px-4 py-2.5 rounded-lg font-semibold text-slate-900
+                        hover:bg-slate-100 flex items-center justify-between
+                      {% else %}
+                        px-3 py-2 rounded-lg font-semibold/relaxed hover:bg-white/20
+                        focus:outline-none focus:ring-2 focus:ring-white/50 inline-flex items-center gap-2 text-white
+                      {% endif %}">
+        <span class="inline-flex items-center gap-2">
+          {% if item.icon %}<i class="{{ item.icon }}"></i>{% endif %}
+          {{ item.label }}
+        </span>
+        {% if kids and not 'mobi' in extra_classes %}<span class="text-white/80">▾</span>{% endif %}
+      </button>
+    {% else %}
+      <a href="{{ href }}"
+         {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
+         class="{% if 'mobi' in extra_classes %}
+                    block w-full text-left px-4 py-2.5 rounded-lg font-semibold text-slate-900
+                    hover:bg-slate-100 flex items-center justify-between
+                  {% else %}
+                    px-3 py-2 rounded-lg font-semibold/relaxed hover:bg-white/20
+                    focus:outline-none focus:ring-2 focus:ring-white/50 inline-flex items-center gap-2 text-white
+                  {% endif %}">
+        <span class="inline-flex items-center gap-2">
+          {% if item.icon %}<i class="{{ item.icon }}"></i>{% endif %}
+          {{ item.label }}
+        </span>
+        {% if kids and not 'mobi' in extra_classes %}<span class="text-white/80">▾</span>{% endif %}
+      </a>
+    {% endif %}
+
+    {# ---------- Submenus ---------- #}
+    {% if kids %}
+      {# ---- MOBILE: always vertical stack (even for MEGA) ---- #}
+      {% if 'mobi' in extra_classes %}
+        <ul class="mt-2 space-y-1">
+          {% for c in kids %}
+            {% if c.is_active and c|can_see:request.user %}
+              {% menu_href c as chref %}
+              <li>
+                {% if c.url_kind == 'none' %}
+                  <span class="block w-full text-left px-4 py-2 rounded-lg text-slate-700 font-medium bg-slate-50">
+                    {{ c.label }}
+                  </span>
+                {% else %}
+                  <a href="{{ chref }}"
+                     {% if c.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
+                     class="block w-full text-left px-4 py-2 rounded-lg text-slate-700 font-medium hover:bg-slate-100">
+                    {{ c.label }}
+                  </a>
+                {% endif %}
+              </li>
+            {% endif %}
+          {% endfor %}
+        </ul>
+
+      {% else %}
+        {# -------- DESKTOP: keep mega grid / dropdown behavior -------- #}
+        {% if is_top and item.is_mega and kids %}
+          <div
+            class="invisible opacity-0 translate-y-2 pointer-events-none
+                   group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto
+                   transition duration-150 ease-out
+                   fixed inset-x-0
+                   z-50"
+            style="top: calc(var(--app-bar-h,64px) + 8px);">
+            <div class="mx-auto w-[min(95rem,95vw)] rounded-2xl border border-black/10
+                        bg-slate-50/80 supports-[backdrop-filter]:bg-slate-50/60 backdrop-blur
+                        shadow-lg px-6 py-6">
+              <div class="grid gap-x-10 gap-y-6
+                          {% if item.mega_columns == 2 %}grid-cols-2
+                          {% elif item.mega_columns == 3 %}grid-cols-3
+                          {% elif item.mega_columns == 5 %}grid-cols-5
+                          {% elif item.mega_columns == 6 %}grid-cols-6
+                          {% else %}grid-cols-4{% endif %}">
+                {% for c in kids %}
+                  {% if c.is_active and c|can_see:request.user %}
+                    {% menu_href c as chref %}
+                    {% if c.url_kind == 'none' %}
+                      <span class="block rounded-xl bg-white/80 border border-black/5 px-4 py-3
+                                   text-slate-800 font-medium shadow-sm">
+                        {{ c.label }}
+                      </span>
+                    {% else %}
+                      <a href="{{ chref }}"
+                         {% if c.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
+                         class="block rounded-xl bg-white/90 border border-black/5 px-4 py-3
+                                text-slate-800 font-medium shadow-sm hover:border-[#24B2C1]/30 hover:shadow-md transition">
+                        {{ c.label }}
+                      </a>
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        {% else %}
+          {# Simple dropdown list #}
+          <ul
+            class="invisible opacity-0 translate-y-2 pointer-events-none
+                   group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto
+                   transition duration-150 ease-out
+                   absolute left-0 mt-2 min-w-56 rounded-xl shadow-lg
+                   bg-white/95 backdrop-blur border p-2 space-y-1 z-50">
+            {% for c in kids %}
+              {% if c.is_active and c|can_see:request.user %}
+                {% menu_href c as chref %}
+                <li>
+                  {% if c.url_kind == 'none' %}
+                    <span class="px-3 py-1.5 block rounded-md text-slate-700 font-medium">
+                      {{ c.label }}
+                    </span>
+                  {% else %}
+                    <a href="{{ chref }}"
+                       {% if c.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
+                       class="px-3 py-1.5 block rounded-md hover:bg-slate-100 text-slate-700 font-medium">
+                      {{ c.label }}
+                    </a>
+                  {% endif %}
+                </li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% endif %}
+    {% endif %}
+  {% endwith %}
+</li>

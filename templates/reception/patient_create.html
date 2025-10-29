@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="p-6 max-w-3xl mx-auto space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold">Create Patient (Reception)</h1>
+    <a href="{% url 'patients_ui:reception_patients_list' %}"
+       class="px-4 py-2 rounded-2xl border border-slate-300 bg-white hover:bg-slate-50 transition">
+      Back to list
+    </a>
+  </div>
+
+  <form method="post" class="space-y-6 bg-white/60 backdrop-blur rounded-3xl p-6 border border-slate-200 shadow-sm">
+    {% csrf_token %}
+
+    <!-- Names -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Given name</label>
+        <input name="given_name" value="{{ form.given_name|default_if_none:'' }}" required
+               class="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 bg-white/80">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Family name</label>
+        <input name="family_name" value="{{ form.family_name|default_if_none:'' }}" required
+               class="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 bg-white/80">
+      </div>
+    </div>
+
+    <!-- Contact -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Email</label>
+        <input name="email" type="email" value="{{ form.email|default_if_none:'' }}"
+               class="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 bg-white/80">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Phone</label>
+        <input name="phone" value="{{ form.phone|default_if_none:'' }}"
+               class="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 bg-white/80">
+      </div>
+    </div>
+
+    <!-- Demographics -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Date of birth</label>
+        <input name="date_of_birth" type="date" value="{{ form.date_of_birth|default_if_none:'' }}"
+               class="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 bg-white/80">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Sex</label>
+        <select name="sex" class="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 bg-white/80">
+          <option value="" {% if not form.sex %}selected{% endif %}>—</option>
+          <option value="Female" {% if form.sex == "Female" %}selected{% endif %}>Female</option>
+          <option value="Male" {% if form.sex == "Male" %}selected{% endif %}>Male</option>
+          <option value="Other" {% if form.sex == "Other" %}selected{% endif %}>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Address -->
+    <div>
+      <label class="block text-sm font-medium text-slate-700">Address</label>
+      <input name="address_line" value="{{ form.address_line|default_if_none:'' }}"
+             class="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 bg-white/80">
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700">City</label>
+        <input name="city" value="{{ form.city|default_if_none:'' }}"
+               class="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 bg-white/80">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Region</label>
+        <input name="region" value="{{ form.region|default_if_none:'' }}"
+               class="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 bg-white/80">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Postal code</label>
+        <input name="postal_code" value="{{ form.postal_code|default_if_none:'' }}"
+               class="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 bg-white/80">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Country</label>
+        <input name="country" value="{{ form.country|default_if_none:'' }}"
+               class="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 bg-white/80">
+      </div>
+    </div>
+
+    <!-- Clinician selection (required for reception) -->
+    <div>
+      <label class="block text-sm font-medium text-slate-700">Assign to clinician</label>
+      <select name="clinician_id" required
+              class="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 bg-white">
+        <option value="">Select a clinician…</option>
+        {% for c in clinicians %}
+          <option value="{{ c.id }}"
+            {% if form.clinician_id and form.clinician_id|stringformat:'s' == c.id|stringformat:'s' %}selected{% endif %}>
+            {{ c.get_full_name|default:c.username }}
+          </option>
+        {% endfor %}
+      </select>
+      <p class="mt-1 text-xs text-slate-500">Required: the patient will appear on the selected clinician’s list.</p>
+    </div>
+
+    <!-- Actions -->
+    <div class="pt-2 flex items-center gap-2">
+      <a href="{% url 'patients_ui:reception_patients_list' %}"
+         class="px-4 py-2 rounded-2xl border border-slate-300 bg-white hover:bg-slate-50 transition">
+        Cancel
+      </a>
+      <button class="px-4 py-2 rounded-2xl bg-teal-600 text-white hover:bg-teal-700 transition">
+        Create Patient
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

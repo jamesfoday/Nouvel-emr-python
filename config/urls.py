@@ -10,11 +10,12 @@ from django.contrib.auth import views as auth_views
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from apps.accounts.views import PortalLoginView
+from apps.accounts.views import PortalLoginView, StaffLoginView
 
 urlpatterns = [
-    # Home → Swagger UI
-    path("", RedirectView.as_view(url="/api/docs/", permanent=False), name="home"),
+    # ---------- Site (public / home) ----------
+    # Home now served by apps.core.urls (e.g., templates/home.html)
+    path("", include(("apps.core.urls", "core"), namespace="core")),
 
     # Admin
     path("admin/", admin.site.urls),
@@ -57,6 +58,11 @@ urlpatterns = [
 
     # ---------- Auth ----------
     path("login/",  PortalLoginView.as_view(), name="login"),
+    # Role-aware staff logins
+    path("reception/login/", StaffLoginView.as_view(audience="reception"), name="reception_login"),
+    path("clinician/login/", StaffLoginView.as_view(audience="clinician"), name="clinician_login"),
+    path("console/login/",  StaffLoginView.as_view(audience="clinician"), name="console_login"),  # optional alias
+
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("password-reset/", auth_views.PasswordResetView.as_view(), name="password_reset"),
     path("password-reset/done/", auth_views.PasswordResetDoneView.as_view(), name="password_reset_done"),
@@ -70,6 +76,16 @@ urlpatterns = [
         auth_views.PasswordResetCompleteView.as_view(extra_context={"login_url": "/login/"}),
         name="password_reset_complete",
     ),
+
+    # Other apps
+    path("reception/", include("apps.reception.ui_urls")),
+    path("services/", include(("apps.services.urls", "services"), namespace="services")),
+    path("console/subscriptions/", include(("apps.subscriptions.urls", "subscriptions"), namespace="subscriptions")),
+    path("healthplans/", include(("apps.healthplans.urls", "healthplans"), namespace="healthplans")),
+    path("invoices/", include("apps.invoices.urls")),
+    path("inquiry/", include("apps.inquiry.urls")),
+    path("bugs/", include("apps.bugtracker.urls")),
+    path("", include("apps.menus.urls", namespace="menus")),
 ]
 
 # Media files during development

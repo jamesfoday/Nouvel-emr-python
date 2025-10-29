@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="p-6 space-y-5">
+
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="min-w-0">
+      <div class="text-xl sm:text-2xl font-bold truncate">
+        {{ clinician.get_full_name|default:clinician.username }}
+      </div>
+      <div class="text-xs text-gray-500">Appointments</div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="{% url 'reception:appt_hub' %}"
+         class="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-900">
+        All clinicians
+      </a>
+
+      <!-- Reception calendar with clinician preselected -->
+      <a href="{% url 'reception:book_calendar' %}?clinician={{ clinician.pk }}"
+         class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700">
+        Book <span class="grid h-5 w-5 place-items-center rounded-full bg-white text-emerald-600">+</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left: lists with tabs -->
+    <div class="lg:col-span-2 rounded-2xl bg-white ring-1 ring-black/5 p-4">
+      <!-- Tabs + search -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex flex-wrap gap-2 text-sm">
+          <a href="?tab=requests{% if q %}&q={{ q|urlencode }}{% endif %}"
+             class="px-3 py-1.5 rounded-full {% if tab == 'requests' %}bg-emerald-200 text-emerald-900{% else %}bg-gray-100{% endif %}">
+            Requests
+          </a>
+          <a href="?tab=upcoming{% if q %}&q={{ q|urlencode }}{% endif %}"
+             class="px-3 py-1.5 rounded-full {% if tab == 'upcoming' %}bg-emerald-200 text-emerald-900{% else %}bg-gray-100{% endif %}">
+            Upcoming
+          </a>
+          <a href="?tab=past{% if q %}&q={{ q|urlencode }}{% endif %}"
+             class="px-3 py-1.5 rounded-full {% if tab == 'past' %}bg-emerald-200 text-emerald-900{% else %}bg-gray-100{% endif %}">
+            Past
+          </a>
+          <a href="?tab=cancelled{% if q %}&q={{ q|urlencode }}{% endif %}"
+             class="px-3 py-1.5 rounded-full {% if tab == 'cancelled' %}bg-emerald-200 text-emerald-900{% else %}bg-gray-100{% endif %}">
+            Cancelled
+          </a>
+        </div>
+
+        <form method="get" class="flex w-full sm:w-auto items-stretch gap-2">
+          <input type="hidden" name="tab" value="{{ tab }}">
+          <input
+            name="q"
+            value="{{ q }}"
+            placeholder="Search patient…"
+            class="flex-1 min-w-0 rounded-full border border-gray-200 px-3 py-1.5 text-sm focus:ring-emerald-500 focus:border-emerald-500"
+          >
+          <button
+            class="shrink-0 rounded-xl bg-gray-900 text-white px-3 py-1.5 text-sm">
+            Filter
+          </button>
+        </form>
+      </div>
+
+      <!-- List -->
+      <div class="divide-y mt-3">
+        {% for a in page_obj.object_list %}
+          <div class="py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <!-- Patient + time -->
+            <div class="flex items-start gap-3 sm:flex-[1_1_50%] min-w-0">
+              <div class="mt-0.5 w-8 h-8 shrink-0 rounded-full bg-emerald-100 grid place-items-center font-semibold">
+                {{ a.patient|stringformat:"s"|slice:":1"|upper|default:"?" }}
+              </div>
+              <div class="min-w-0">
+                <div class="text-sm font-semibold truncate">
+                  {{ a.patient }}
+                </div>
+                <div class="text-xs text-gray-500">
+                  {{ a.start|date:"D, M d · H:i" }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Status -->
+            <div class="sm:flex-[0_0_auto] sm:text-right min-w-0">
+              <div class="text-xs text-gray-500">Status</div>
+              <div class="text-sm font-medium truncate max-w-[180px]">
+                {{ a.status|title }}
+              </div>
+            </div>
+
+            <!-- Actions (48h only) -->
+            <div class="sm:flex-[0_0_auto] flex gap-2 sm:justify-end">
+              {% if a.id in in_48h_ids and tab != 'cancelled' %}
+                <form hx-post="{% url 'reception:appt_remind' a.pk %}" hx-swap="none">
+                  <button class="px-3 py-1 text-xs rounded-xl bg-gray-900 text-white">Reminder</button>
+                </form>
+                <form hx-post="{% url 'reception:appt_cancel' a.pk %}"
+                      hx-confirm="Cancel appointment?" hx-swap="none">
+                  <button class="px-3 py-1 text-xs rounded-xl bg-red-100 text-red-700">Cancel</button>
+                </form>
+              {% else %}
+                <span class="text-xs text-gray-400">—</span>
+              {% endif %}
+            </div>
+          </div>
+        {% empty %}
+          <div class="p-6 text-sm text-gray-500">Nothing here.</div>
+        {% endfor %}
+      </div>
+
+      {% if page_obj.paginator.num_pages > 1 %}
+        <div class="flex justify-center gap-2 text-sm mt-4">
+          {% if page_obj.has_previous %}
+            <a class="px-3 py-1 rounded bg-white ring-1 ring-gray-200 hover:bg-gray-50"
+               href="?tab={{ tab }}&page={{ page_obj.previous_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}">Prev</a>
+          {% endif %}
+          <span class="px-3 py-1">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+          {% if page_obj.has_next %}
+            <a class="px-3 py-1 rounded bg-white ring-1 ring-gray-200 hover:bg-gray-50"
+               href="?tab={{ tab }}&page={{ page_obj.next_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}">Next</a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Right: availability (HTMX) -->
+    <div class="rounded-2xl bg-white ring-1 ring-black/5 p-4 min-h-[200px]"
+         hx-get="{% url 'reception:clinician_availability' clinician_id %}"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      Loading availability…
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="min-h-screen bg-[#F6FBF8] mt-0">  {# soft, single background #}
+
+  <!-- HERO -->
+  <section class="py-10 md:py-14">
+    <div class="max-w-6xl mx-auto px-4 md:px-6 grid md:grid-cols-2 gap-8 items-center">
+      <!-- Copy -->
+      <div>
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white ring-1 ring-emerald-900/10 text-emerald-800">
+          Trusted care, modern experience
+        </span>
+        <h1 class="mt-4 text-3xl md:text-5xl font-extrabold tracking-tight text-emerald-950 leading-tight">
+          Your all-in-one path to <span class="text-emerald-600">better care</span>.
+        </h1>
+        <p class="mt-3 text-emerald-900/80 max-w-xl">
+          Book visits, message your care team, and access diagnostics—built to be simple, fast, and human.
+        </p>
+
+        <!-- Search-like CTA -->
+        <form action="{% url 'services:catalog' %}" method="get" class="mt-6" role="search">
+          <div class="relative max-w-lg">
+            <input
+              name="q"
+              class="w-full px-4 pr-28 py-3 rounded-2xl bg-white ring-1 ring-emerald-900/10 focus:ring-2 focus:ring-emerald-500 outline-none placeholder:text-emerald-900/40"
+              placeholder="Search services, tests, or specialties…"
+              value="{{ request.GET.q|default_if_none:'' }}"
+            >
+            <button type="submit"
+                    class="absolute right-1 top-1/2 -translate-y-1/2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500">
+              Explore
+            </button>
+          </div>
+        </form>
+
+        <!-- Quick actions -->
+        <div class="mt-4 flex flex-wrap gap-3">
+          <a href="/portal/" class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-500">Get Started</a>
+          <a href="{% url 'reception_login' %}" class="px-4 py-2 rounded-xl bg-white ring-1 ring-emerald-900/10 text-emerald-900 font-semibold hover:bg-emerald-50">Staff Login</a>
+        </div>
+
+        <!-- Trust row -->
+        <div class="mt-6 flex items-center gap-5 text-xs text-emerald-900/60">
+          <span class="inline-flex items-center gap-2"><span>✅</span> HIPAA-aware</span>
+          <span class="inline-flex items-center gap-2"><span>🔒</span> Secure messaging</span>
+          <span class="inline-flex items-center gap-2"><span>⚡</span> Same-day results</span>
+        </div>
+      </div>
+
+      <!-- Visual card -->
+      <div>
+        <div class="relative overflow-hidden rounded-[28px] ring-1 ring-emerald-900/10 shadow-sm">
+          <img src="{% static 'img/hero-doc.jpg' %}" alt="Hero"
+               class="w-full h-[340px] md:h-[420px] object-cover" onerror="this.style.display='none'">
+          <div class="absolute inset-0 bg-gradient-to-t from-emerald-900/40 to-transparent"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feature icons (3-up) -->
+  <section class="py-6 md:py-8">
+    <div class="max-w-6xl mx-auto px-4 md:px-6 grid sm:grid-cols-3 gap-4">
+      {% for f in feature_cards %}
+      <div class="rounded-2xl bg-white ring-1 ring-emerald-900/10 p-5">
+        <div class="text-2xl">{{ f.icon }}</div>
+        <div class="mt-2 font-semibold text-emerald-950">{{ f.title }}</div>
+        <div class="text-sm text-emerald-900/70">{{ f.desc }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Labs banner -->
+  <section id="labs" class="py-10">
+    <div class="max-w-6xl mx-auto px-4 md:px-6">
+      <div class="relative overflow-hidden rounded-2xl ring-1 ring-emerald-900/10 shadow-sm">
+        <img src="{% static 'img/labs-banner.jpg' %}" alt="Labs"
+             class="absolute inset-0 w-full h-full object-cover" onerror="this.style.display='none'">
+        <div class="absolute inset-0 bg-emerald-900/60"></div>
+        <div class="relative p-8 md:p-12 text-center">
+          <h3 class="text-2xl md:text-3xl font-extrabold text-white">Nouvel Labs & Diagnostics</h3>
+          <p class="mt-2 text-white/85 max-w-2xl mx-auto">Point-of-care tech for rapid, reliable answers.</p>
+          <a href="#services" class="mt-5 inline-block px-4 py-2 rounded-full bg-white/90 text-emerald-900 font-semibold hover:bg-white">See tests</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Services chips -->
+  <section id="services" class="py-10">
+    <div class="max-w-6xl mx-auto px-4 md:px-6 text-center">
+      <h3 class="text-xl md:text-2xl font-extrabold text-emerald-950">Diagnostics Tests</h3>
+      <div class="mt-6 flex flex-wrap justify-center gap-3">
+        {% for test in diag_tests %}
+          <span class="px-4 py-2 bg-white ring-1 ring-emerald-900/10 text-emerald-800 rounded-full text-sm font-medium shadow-sm">
+            {{ test }}
+          </span>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Two-column: Specialty text + image card -->
+  <section class="py-10">
+    <div class="max-w-6xl mx-auto px-4 md:px-6 grid md:grid-cols-2 gap-10 items-center">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-extrabold text-emerald-950">Nouvel Specialty</h2>
+        <p class="mt-3 text-emerald-900/80 leading-relaxed">
+          Gastroenterology & Hepatology care with endoscopy and ultrasound.
+        </p>
+        <ul class="mt-4 text-emerald-900/90 space-y-1">
+          <li>• Gastroenterology</li>
+          <li>• Hepatology</li>
+          <li>• Endoscopy & Ultrasound</li>
+        </ul>
+      </div>
+      <div class="rounded-2xl overflow-hidden ring-1 ring-emerald-900/10 shadow-sm">
+        <img src="{% static 'img/specialty.jpg' %}" alt="Specialty"
+             class="w-full h-[240px] md:h-[300px] object-cover" onerror="this.style.display='none'">
+      </div>
+    </div>
+  </section>
+
+  <!-- Hematology chips -->
+  <section class="py-10">
+    <div class="max-w-6xl mx-auto px-4 md:px-6 text-center">
+      <h3 class="text-xl md:text-2xl font-extrabold text-emerald-950">Hematology Parameters</h3>
+      <div class="mt-6 flex flex-wrap justify-center gap-3">
+        {% for param in hemat_params %}
+          <span class="px-4 py-2 bg-white text-emerald-900 rounded-full text-sm font-medium ring-1 ring-emerald-900/10">
+            {{ param }}
+          </span>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Bottom CTA band -->
+  <section class="py-12">
+    <div class="max-w-6xl mx-auto px-4 md:px-6">
+      <div class="rounded-2xl bg-white ring-1 ring-emerald-900/10 p-6 md:p-8 text-center">
+        <h4 class="text-xl md:text-2xl font-extrabold text-emerald-950">Ready to take the next step?</h4>
+        <p class="mt-2 text-emerald-900/70">Create your account or sign in to manage care in minutes.</p>
+        <div class="mt-5 flex justify-center gap-3">
+          <a href="/portal/" class="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-500">Get Started</a>
+          <a href="{% url 'reception_login' %}" class="px-5 py-2.5 rounded-xl bg-emerald-50 text-emerald-900 font-semibold ring-1 ring-emerald-900/10 hover:bg-emerald-100">Staff</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVICES GRID -->
+  <section id="our-services" class="py-12 md:py-16">
+    <div class="max-w-6xl mx-auto px-4 md:px-6">
+      <div class="flex items-end justify-between gap-3">
+        <div>
+          <h2 class="text-2xl md:text-3xl font-extrabold text-emerald-950">Services</h2>
+          <p class="text-emerald-900/70 mt-1">Explore what we offer across care and diagnostics.</p>
+        </div>
+
+        {% if request.user.is_superuser or request.user.is_staff %}
+          <a href="{% url 'services:list' %}"
+             class="hidden md:inline-flex items-center px-4 py-2 rounded-xl bg-white ring-1 ring-emerald-900/10 text-emerald-900 font-semibold hover:bg-emerald-50">
+            Manage
+          </a>
+        {% endif %}
+      </div>
+
+      <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+        {% for s in services_grid %}
+        <article class="rounded-2xl bg-white ring-1 ring-emerald-900/10 shadow-sm overflow-hidden">
+          <a href="{% if s.slug %}{% url 'services:detail' s.slug %}{% else %}#{% endif %}" class="relative block h-40">
+            {% if s.image_url %}
+              <img src="{{ s.image_url }}" alt="{{ s.title }}" loading="lazy" class="absolute inset-0 w-full h-full object-cover">
+            {% else %}
+              <img src="{% static 'img/service-fallback.jpg' %}" alt="{{ s.title }}" class="absolute inset-0 w-full h-full object-cover">
+            {% endif %}
+            <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/40 to-cyan-500/30"></div>
+
+            <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              {% if s.image_url %}
+                <img src="{{ s.image_url }}" alt="" loading="lazy" class="w-24 h-24 rounded-full object-cover ring-4 ring-white shadow-lg">
+              {% else %}
+                <img src="{% static 'img/service-fallback.jpg' %}" alt="" class="w-24 h-24 rounded-full object-cover ring-4 ring-white shadow-lg">
+              {% endif %}
+            </div>
+          </a>
+
+          <div class="p-4">
+            <div class="rounded-xl bg-emerald-50/80 ring-1 ring-emerald-900/10 p-3 min-h-[92px]">
+              <div class="font-semibold text-emerald-950 mb-1 line-clamp-1">
+                {{ s.title }}
+              </div>
+              <p class="text-sm text-emerald-900/70 leading-snug line-clamp-2">
+                {% if s.summary %}{{ s.summary|truncatechars:120 }}
+                {% elif s.description %}{{ s.description|striptags|truncatechars:120 }}
+                {% else %}Details coming soon.{% endif %}
+              </p>
+            </div>
+
+            <div class="mt-3">
+              {% if s.slug %}
+                <a href="{% url 'services:detail' s.slug %}"
+                   class="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500">
+                  view
+                </a>
+              {% else %}
+                <span class="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-semibold bg-gray-200 text-gray-600">
+                  view
+                </span>
+              {% endif %}
+            </div>
+          </div>
+        </article>
+        {% empty %}
+        <div class="col-span-full text-center text-emerald-900/60 py-10">
+          No services to show yet.
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- VISION & MISSION -->
+  <section id="vision-mission" class="py-12 md:py-16 bg-emerald-900/5">
+    <div class="max-w-6xl mx-auto px-4 md:px-6">
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- Vision -->
+        <article class="rounded-2xl bg-white ring-1 ring-emerald-900/10 shadow-sm p-6 md:p-7">
+          <div class="flex items-center gap-3">
+            <div class="grid place-items-center w-10 h-10 rounded-xl bg-emerald-600 text-white text-lg">👁️</div>
+            <h2 class="text-xl md:text-2xl font-extrabold text-emerald-950">Vision</h2>
+          </div>
+          <blockquote class="mt-4 pl-4 border-l-4 border-emerald-600/30">
+            <p class="text-emerald-900/80 leading-relaxed">
+              “The vision of the NHS is to standardize the ease of access, provision, and delivery of
+              high-quality healthcare products and services to the population through our platform.”
+            </p>
+          </blockquote>
+        </article>
+
+        <!-- Mission -->
+        <article class="rounded-2xl bg-white ring-1 ring-emerald-900/10 shadow-sm p-6 md:p-7">
+          <div class="flex items-center gap-3">
+            <div class="grid place-items-center w-10 h-10 rounded-xl bg-emerald-600 text-white text-lg">🎯</div>
+            <h2 class="text-xl md:text-2xl font-extrabold text-emerald-950">Mission</h2>
+          </div>
+          <div class="mt-4 space-y-4 text-emerald-900/80 leading-relaxed">
+            <p>
+              Our mission is to provide convenient, quality, and affordable healthcare products and services
+              through our friendly health ecosystem.
+            </p>
+            <p>
+              NHS caters to all community healthcare challenges, removing barriers to accessing quality care,
+              and providing timely, affordable, globally recognized pharmaceutical products and medical services.
+            </p>
+            <p>
+              We leverage a digital platform that enables quick access to highly trained and specialized
+              medical personnel both locally and internationally.
+            </p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact + Inquiry -->
+  <div class="py-10 md:py-14">
+    <div class="max-w-6xl mx-auto px-4 md:px-6">
+      <section class="rounded-2xl border border-emerald-200/60 bg-emerald-50/30 p-4 md:p-6">
+        <div class="grid md:grid-cols-2 gap-8">
+          <!-- Left: Contact details -->
+          <div>
+            <h2 class="text-2xl md:text-3xl font-extrabold text-emerald-950">Get In Touch</h2>
+            <div class="mt-6 space-y-6 text-emerald-900">
+              <div>
+                <div class="font-semibold text-emerald-950">Address</div>
+                <div class="mt-1 space-y-2 text-sm leading-relaxed">
+                  <p>101 Carrefour Banane Mendong, Yaoundé</p>
+                  <p>200 Molyko Beau</p>
+                  <p>Bonamoussadi, Douala</p>
+                </div>
+              </div>
+
+              <div>
+                <div class="font-semibold text-emerald-950">Phone</div>
+                <div class="mt-1 space-y-1 text-sm">
+                  <p>+237 698302350</p>
+                  <p>+237 671747200</p>
+                </div>
+              </div>
+
+              <div>
+                <div class="font-semibold text-emerald-950">Email</div>
+                <div class="mt-1 text-sm">
+                  <a href="mailto:info@nouvelhcs.com" class="hover:underline">info@nouvelhcs.com</a>
+                </div>
+              </div>
+
+              <div>
+                <div class="font-semibold text-emerald-950">Work Time</div>
+                <div class="mt-1 text-sm">Mon–Fri: 8 AM–8 PM</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Inquiry form -->
+          <div>
+            <h2 class="text-2xl md:text-3xl font-extrabold text-emerald-950 md:text-center">Inquiry</h2>
+          <form method="post" class="mt-4 space-y-3" action="{{ request.path }}">
+            {% csrf_token %}
+            {% if form %}
+                {% if form.non_field_errors %}
+                <div class="rounded-lg bg-red-50 text-red-700 text-sm px-3 py-2 ring-1 ring-red-200">
+                    {{ form.non_field_errors }}
+                </div>
+                {% endif %}
+
+                <div>{{ form.name }}{{ form.name.errors }}</div>
+                <div>{{ form.email }}{{ form.email.errors }}</div>
+                <div>{{ form.message }}{{ form.message.errors }}</div>
+
+                <button class="w-full md:w-auto md:min-w-[200px] rounded-xl bg-emerald-600 text-white px-6 py-3 font-semibold hover:bg-emerald-700 active:scale-[.99]">
+                Send
+                </button>
+            {% endif %}
+            </form>
+
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Minimal footer -->
+  <footer class="py-10 text-center text-sm text-emerald-900/60">
+    © {% now "Y" %} Nouvel Healthcare System • All rights reserved
+  </footer>
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load static %}
+{% load rbac_tags %}
+
+{% block content %}
+<div class="p-6">
+  <!-- Centered container with a max width -->
+  <div class="max-w-5xl mx-auto space-y-6 rounded-b-2xl rounded-t-2xl ring-1 ring-emerald-900/10 bg-white/60 supports-[backdrop-filter]:bg-white/40 backdrop-blur p-5 mt-0">
+
+    <!-- Header + actions -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold">All Patients (Assigned to Clinicians)</h1>
+        <p class="text-slate-600 text-sm">
+          Reception view: search, open detail/edit, or activate/deactivate.
+        </p>
+      </div>
+
+        <div class="flex gap-3"> <a href="{% url 'patients_ui:reception_patient_create' %}"
+         class="px-4 py-2 rounded-2xl bg-black text-white hover:bg-slate-900 transition">
+        Create Patient
+      </a>
+       <a href="{% url 'reception:dashboard' %}"
+       class=" px-4 py-2 rounded-2xl  text-white transition bg-emerald-600  hover:bg-emerald-700">
+      Home
+    </a></div>
+      
+    </div>
+
+    <!-- Hidden CSRF for HTMX -->
+    <form class="hidden">{% csrf_token %}</form>
+
+    <!-- Search form -->
+    <form method="get" class="flex gap-2"
+          hx-get="{% absurl_or 'patients_ui:reception_patients_list' default='/console/' %}"
+          hx-vals='{"view":"cards"}'
+          hx-trigger="keyup changed delay:400ms from:#search-q"
+          hx-target="#patients-cards"
+          hx-swap="innerHTML">
+      <input
+        id="search-q"
+        type="text"
+        name="q"
+        value="{{ q }}"
+        placeholder="Search name / email / phone"
+        class="rounded-2xl border border-slate-300 px-4 py-2 w-full md:w-96 bg-white/80 backdrop-blur"
+        aria-label="Search patients"
+      />
+      <button class="px-4 py-2 rounded-2xl bg-teal-600 text-white hover:bg-teal-700 transition">
+        Search
+      </button>
+    </form>
+
+    <!-- Cards container -->
+    <div id="patients-cards" class="space-y-4">
+      {% include "reception/_patients_cards.html" %}
+    </div>
+
+  </div>
+</div>
+
+<!-- CSRF header for HTMX -->
+<script>
+  document.body.addEventListener('htmx:configRequest', (e) => {
+    const tokenInput = document.querySelector('input[name=csrfmiddlewaretoken]');
+    if (tokenInput) e.detail.headers['X-CSRFToken'] = tokenInput.value;
+  });
+</script>
+{% endblock %}

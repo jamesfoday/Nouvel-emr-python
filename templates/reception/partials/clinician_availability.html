@@ -1,0 +1,18 @@
+<div>
+  <div class="text-sm font-semibold mb-2">Availability (next 7 days)</div>
+  <div class="text-xs text-gray-500 mb-3">{{ start|date:"M d" }} — {{ end|date:"M d" }}</div>
+
+  {% if busy %}
+    <div class="text-xs text-gray-600 mb-2">Busy times:</div>
+    <ul class="list-disc ml-5 text-xs space-y-1">
+      {% for s,e in busy %}
+        <li>{{ s|date:"D M d, H:i" }}–{{ e|date:"H:i" }}</li>
+      {% endfor %}
+    </ul>
+    <div class="mt-3 text-xs text-gray-500">Integrate your real availability source here.</div>
+  {% else %}
+    <div class="text-sm text-gray-500">No conflicts found. All slots appear free.</div>
+  {% endif %}
+
+ 
+</div>

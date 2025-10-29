@@ -1,0 +1,155 @@
+{# templates/reception/partials/inbox.html #}
+{% load static %}
+{% load rbac_tags %}
+
+<div class="rounded-2xl p-1">
+  <div class="rounded-2xl bg-white shadow overflow-hidden">
+
+    {% if tab == "dm" %}
+      <!-- Direct Messages -->
+      <div id="rcp-dm-layout" class="grid grid-cols-1 md:grid-cols-12">
+
+        <!-- Sidebar (patient list) -->
+        <aside id="rcp-dm-sidebar" class="md:col-span-4 lg:col-span-3 border-r">
+          <div class="p-4 sm:p-6 space-y-4">
+            <!-- Search pill -->
+            <div class="relative">
+              <input
+                id="rcp-dm-search"
+                type="search"
+                name="q"
+                placeholder="Search Patient"
+                class="w-full rounded-full border border-gray-300 px-4 py-2 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                hx-get="{% url 'patients_ui:patients_search' %}?template=dm&limit=60"
+                hx-target="#rcp-dm-search-results"
+                hx-trigger="input changed delay:250ms, search"
+                autocomplete="off"
+              />
+              <svg class="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M21 21l-4.3-4.3m1.3-5.2a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
+
+            <!-- Patient list (initial + HTMX updates) -->
+            <div id="rcp-dm-search-results" data-dm-list class="space-y-2">
+              {# Re-use existing dm search list partial, shows all if `patients` provided #}
+              {% include "patients/_dm_search_list.html" with patients=patients only %}
+            </div>
+          </div>
+        </aside>
+
+        <!-- Conversation panel -->
+        <section id="rcp-dm-panel" class="hidden md:block md:col-span-8 lg:col-span-9">
+          <div class="flex h-[28rem] md:h-[34rem] flex-col bg-white">
+            <!-- Header -->
+            <div class="flex items-center justify-between border-b px-4 sm:px-6 py-3">
+              <div class="flex items-center gap-3">
+                <!-- Mobile back -->
+                <button type="button"
+                        id="rcp-dm-back"
+                        class="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-full border hover:bg-gray-50"
+                        aria-label="Back to list">
+                  ←
+                </button>
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900">
+                  <span id="rcp-dm-current-name">Direct Message</span>
+                </h3>
+              </div>
+              <div class="text-xs text-gray-400" id="rcp-dm-right-subtle">Nothing yet.</div>
+            </div>
+
+            <!-- Messages -->
+            <div id="rcp-dm-thread" class="flex-1 overflow-y-auto p-4 sm:p-6">
+              <p class="text-gray-400">Nothing yet.</p>
+            </div>
+
+            <!-- Composer -->
+            <div class="border-t px-4 sm:px-6 py-3">
+              <form id="rcp-dm-form"
+                    hx-post="{% url 'reception:dm_send' %}"
+                    hx-target="#rcp-dm-thread"
+                    hx-swap="beforeend"
+                    onsubmit="return onRcpDmSend(event);">
+                {% csrf_token %}
+                <input type="hidden" name="patient_id" id="rcp-dm-patient-id">
+                <div class="flex gap-2">
+                  <input id="rcp-dm-body" name="body" type="text"
+                         class="flex-1 rounded-xl border px-4 py-2 text-sm"
+                         placeholder="Select a patient to start a conversation…" disabled>
+                  <button class="rounded-xl bg-emerald-600 px-4 py-2 text-white font-medium disabled:opacity-50"
+                          id="rcp-dm-send-btn" disabled>Send</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+      </div>
+    {% else %}
+      <!-- Inbox fallback -->
+      <div class="p-6">
+        <h3 class="text-base font-semibold mb-2">Inbox</h3>
+        <div class="text-gray-400">Nothing yet.</div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  // Toggle helpers (mobile)
+  function rcpShowDmList() {
+    document.getElementById('rcp-dm-sidebar')?.classList.remove('hidden');
+    document.getElementById('rcp-dm-panel')?.classList.add('hidden');
+  }
+  function rcpShowDmPanel() {
+    document.getElementById('rcp-dm-sidebar')?.classList.add('hidden');
+    document.getElementById('rcp-dm-panel')?.classList.remove('hidden');
+  }
+
+  // Select a patient -> load thread, arm composer, update header, swap to panel on mobile
+  function rcpSelectDmPatient(id, label) {
+    const pid   = document.getElementById('rcp-dm-patient-id');
+    const body  = document.getElementById('rcp-dm-body');
+    const btn   = document.getElementById('rcp-dm-send-btn');
+    const name  = document.getElementById('rcp-dm-current-name');
+    const subtle= document.getElementById('rcp-dm-right-subtle');
+
+    pid.value = String(id);
+    body.disabled = false;
+    btn.disabled  = false;
+    body.placeholder = 'Type your message…';
+    name.textContent = label || 'Patient';
+    subtle.textContent = '';
+
+    const url = "{% url 'reception:dm_thread' %}" + "?patient_id=" + encodeURIComponent(id);
+    htmx.ajax('GET', url, { target: '#rcp-dm-thread', swap: 'innerHTML' });
+
+    // On small screens, switch to the conversation pane
+    if (window.matchMedia('(max-width: 767.98px)').matches) {
+      rcpShowDmPanel();
+      setTimeout(() => body?.focus(), 0);
+    }
+  }
+
+  // Send handler
+  function onRcpDmSend(e) {
+    const pid   = document.getElementById('rcp-dm-patient-id').value;
+    const input = document.getElementById('rcp-dm-body');
+    if (!pid) { e.preventDefault(); alert('Select a patient first.'); return false; }
+    const v = (input.value || '').trim();
+    if (!v) { e.preventDefault(); return false; }
+    htmx.on('#rcp-dm-form', 'htmx:afterRequest', () => { input.value=''; input.focus(); }, { once: true });
+    return true;
+  }
+
+  // Event delegation for patient list items (from patients/_dm_search_list.html)
+  document.addEventListener('click', function (e) {
+    const el = e.target.closest('[data-dm-patient]');
+    if (!el) return;
+    const id = el.dataset.id;
+    const label = el.dataset.label || 'Patient';
+    rcpSelectDmPatient(id, label);
+  });
+
+  // Mobile back
+  document.getElementById('rcp-dm-back')?.addEventListener('click', rcpShowDmList);
+</script>

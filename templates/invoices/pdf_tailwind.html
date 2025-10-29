@@ -1,0 +1,129 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ invoice.number }} · Invoice</title>
+
+  <!-- Tailwind via CDN runtime -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Optional: tweak Tailwind config if needed
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            emerald: {
+              50:  '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @page { size: A4; margin: 22mm; }
+    html, body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+    /* ensure background colors render in PDF (we also pass print_background=True in view) */
+    .ring-emerald-900\/10 { box-shadow: none; }
+    .avoid-break { break-inside: avoid; }
+  </style>
+</head>
+<body class="text-emerald-900">
+  <div class="p-0 max-w-none mx-0">
+    <div class="bg-white ring-1 ring-emerald-900/10 rounded-3xl shadow p-6 md:p-8">
+
+      <!-- Header -->
+      <div class="flex items-start justify-between">
+        <div>
+          <div class="text-xl font-semibold text-emerald-900">Nouvel Healthcare System</div>
+          <div class="text-sm text-gray-500">Invoice</div>
+        </div>
+        <div class="text-right">
+          <div class="text-sm text-gray-500">#{{ invoice.number }}</div>
+          <div class="mt-1">
+            {% if invoice.status == 'paid' %}
+              <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs">Paid</span>
+            {% elif invoice.status == 'sent' %}
+              <span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs">Sent</span>
+            {% elif invoice.status == 'overdue' %}
+              <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs">Overdue</span>
+            {% elif invoice.status == 'void' %}
+              <span class="px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 text-xs">Void</span>
+            {% else %}
+              <span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">{{ invoice.get_status_display }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <hr class="my-4">
+
+      <!-- Meta -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div>
+          <div class="text-gray-500">Billed to</div>
+          <div class="font-medium text-emerald-900">{{ invoice.customer.full_name }}</div>
+          <div class="text-gray-500">{{ invoice.customer.email|default:"—" }}</div>
+        </div>
+        <div class="sm:text-right">
+          <div>Issue Date: {{ invoice.issued_at|date:"d M Y" }}</div>
+          {% if invoice.due_at %}<div>Due Date: {{ invoice.due_at|date:"d M Y" }}</div>{% endif %}
+          <div>Currency: {{ invoice.currency }}</div>
+        </div>
+      </div>
+
+      <!-- Items -->
+      <div class="mt-6 avoid-break">
+        <div class="rounded-2xl overflow-hidden ring-1 ring-emerald-900/10">
+          <div class="grid grid-cols-12 text-sm bg-emerald-600 text-white">
+            <div class="col-span-1 px-3 py-2">No</div>
+            <div class="col-span-6 px-3 py-2">Description</div>
+            <div class="col-span-2 px-3 py-2">Qty</div>
+            <div class="col-span-1 px-3 py-2">Unit</div>
+            <div class="col-span-2 px-3 py-2 text-right">Line total</div>
+          </div>
+          {% for it in invoice.items.all %}
+            <div class="grid grid-cols-12 text-sm bg-white">
+              <div class="col-span-1 px-3 py-2">{{ forloop.counter }}</div>
+              <div class="col-span-6 px-3 py-2">{{ it.description }}</div>
+              <div class="col-span-2 px-3 py-2">{{ it.qty }}</div>
+              <div class="col-span-1 px-3 py-2">{{ it.unit_price }}</div>
+              <div class="col-span-2 px-3 py-2 text-right">{{ it.line_total }}</div>
+            </div>
+          {% empty %}
+            <div class="px-3 py-4 text-sm text-gray-500">No items.</div>
+          {% endfor %}
+        </div>
+
+        <!-- Totals -->
+        <div class="mt-4 space-y-1 text-sm">
+          <div class="flex items-center justify-between"><span>Sub Total</span><span>{{ invoice.subtotal }} {{ invoice.currency }}</span></div>
+          <div class="flex items-center justify-between"><span>Tax ({{ invoice.tax_rate }}%)</span><span>{{ invoice.tax_amount }} {{ invoice.currency }}</span></div>
+          <div class="flex items-center justify-between font-semibold text-emerald-900"><span>Grand Total</span><span>{{ invoice.total }} {{ invoice.currency }}</span></div>
+        </div>
+      </div>
+
+      {% if invoice.note %}
+        <div class="mt-6 text-sm avoid-break">
+          <div class="text-emerald-900/70 font-medium mb-1">Notes</div>
+          <div class="rounded-xl ring-1 ring-emerald-900/10 bg-emerald-50/40 px-3 py-2">
+            {{ invoice.note|linebreaksbr }}
+          </div>
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+</body>
+</html>

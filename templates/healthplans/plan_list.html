@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-6 md:p-8 space-y-6 max-w-5xl mx-auto">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-semibold text-emerald-900">Health Plans</h1>
+    {% if request.user.is_staff %}
+      <a href="{% url 'healthplans:plan_create' %}"
+         class="rounded-full bg-emerald-600 text-white px-4 py-2 text-sm font-semibold shadow hover:bg-emerald-700">+ Create Plan</a>
+    {% endif %}
+  </div>
+
+  {% if enrollment %}
+    <div class="rounded-2xl bg-white/60 supports-[backdrop-filter]:bg-white/40 backdrop-blur ring-1 ring-emerald-900/10 p-4">
+      <div class="flex items-center justify-between">
+        <div class="text-emerald-900/80">
+          Current plan: <span class="font-semibold">{{ enrollment.plan.name }}</span>
+          <span class="text-sm ml-2">Renews {{ enrollment.current_period_end|date:"M d, Y" }}</span>
+          {% if enrollment.cancel_at_period_end %}<span class="ml-2 text-red-600">Cancels at period end</span>{% endif %}
+        </div>
+        <div class="flex gap-2">
+          {% if enrollment.cancel_at_period_end %}
+            <form method="post" action="{% url 'healthplans:resume' %}">{% csrf_token %}
+              <button class="rounded-full px-4 py-2 bg-emerald-600 text-white text-sm">Resume</button>
+            </form>
+          {% else %}
+            <form method="post" action="{% url 'healthplans:cancel' %}">{% csrf_token %}
+              <button class="rounded-full px-4 py-2 bg-red-600 text-white text-sm">Cancel</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    {% for p in plans %}
+      <article
+        class="rounded-3xl bg-white/55 supports-[backdrop-filter]:bg-white/35 backdrop-blur-md ring-1 ring-emerald-900/10 shadow transition hover:ring-emerald-900/20 flex flex-col">
+
+        <div class="p-5 space-y-3 flex-1">
+          <div class="text-lg font-semibold text-emerald-950">{{ p.name }}</div>
+          <div class="text-3xl font-bold text-emerald-800">{{ p.price_display }}</div>
+          <ul class="mt-2 text-sm text-emerald-950/80 space-y-1">
+            <li>🩺 {{ p.visits_per_period }} visits / {{ p.interval }}</li>
+            {% if p.includes_telehealth %}<li>📱 Telehealth included</li>{% endif %}
+            <li>💳 Copay: {{ p.copay_display }}</li>
+            <li>📉 Deductible: {{ p.deductible_display }}</li>
+            <li>🛡️ OOP max: {{ p.oop_max_display }}</li>
+            {% if p.coinsurance_pct %}<li>％ Coinsurance: {{ p.coinsurance_pct }}%</li>{% endif %}
+            {% if p.region %}<li>🌍 Region: {{ p.region }}</li>{% endif %}
+          </ul>
+        </div>
+
+        <div class="p-5 pt-0">
+          {% if enrollment and enrollment.plan_id == p.id %}
+            <button type="button"
+                    class="w-full rounded-full bg-emerald-100 text-emerald-800 font-semibold px-4 py-2 cursor-not-allowed"
+                    disabled>
+              Current Plan
+            </button>
+          {% else %}
+            {% if request.user.is_authenticated %}
+              <button type="button"
+                      class="w-full rounded-full bg-emerald-600 text-white font-semibold px-4 py-2 hover:bg-emerald-700"
+                      data-checkout-open
+                      data-plan-slug="{{ p.slug }}">
+                Enroll
+              </button>
+            {% else %}
+              {# Adjust 'login' URL name if using allauth or custom auth (# e.g., account_login) #}
+              <a href="{% url 'login' %}?next={% url 'healthplans:plans' %}"
+                 class="w-full inline-flex items-center justify-center rounded-full bg-emerald-600 text-white font-semibold px-4 py-2 hover:bg-emerald-700">
+                Sign in to enroll
+              </a>
+            {% endif %}
+          {% endif %}
+        </div>
+      </article>
+    {% empty %}
+      <div class="col-span-full text-emerald-900/70">No plans available.</div>
+    {% endfor %}
+  </div>
+</div>
+
+{# ================= Modal shell ================= #}
+<div id="hp-checkout-modal" class="fixed inset-0 z-50 hidden" aria-modal="true" role="dialog">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-close></div>
+  <div class="relative z-10 w-full h-full flex items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white shadow-xl ring-1 ring-black/10 overflow-hidden">
+      <div id="hp-checkout-body" class="min-h-[220px] flex items-center justify-center p-6" tabindex="-1">
+        <div class="text-sm text-gray-500">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const modal = document.getElementById('hp-checkout-modal');
+  const body  = document.getElementById('hp-checkout-body');
+
+  function openModal(){
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    // move focus inside modal for a11y
+    setTimeout(() => body?.focus(), 0);
+  }
+  function closeModal(){
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  modal.addEventListener('click', (e) => {
+    if (e.target.hasAttribute('data-close')) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+  });
+
+  // Open modal: fetch inner HTML for the chosen plan (login required server-side)
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-checkout-open]');
+    if (!btn) return;
+
+    const slug = btn.getAttribute('data-plan-slug');
+    if (!slug) return;
+
+    openModal();
+    body.innerHTML = '<div class="p-6 text-sm text-gray-500">Loading…</div>';
+
+    const url = `{% url 'healthplans:checkout_modal' 'SLUG' %}`.replace('SLUG', slug);
+    try {
+      const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+      // If not authenticated, Django will redirect; surface a fallback message
+      if (res.redirected) {
+        body.innerHTML = '<div class="p-6 text-sm text-gray-600">Please sign in to enroll.</div>';
+        return;
+      }
+      const html = await res.text();
+      body.innerHTML = html;
+    } catch (err) {
+      body.innerHTML = '<div class="p-6 text-red-600">Failed to load checkout.</div>';
+    }
+  });
+})();
+</script>
+{% endblock %}

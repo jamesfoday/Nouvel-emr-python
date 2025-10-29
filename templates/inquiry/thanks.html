@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="min-h-[60vh] grid place-items-center p-6">
+  <div class="max-w-md text-center space-y-3">
+    <h1 class="text-2xl font-semibold text-emerald-900">Thank you!</h1>
+    <p class="text-emerald-900/80">Your message has been received. Our team will get back to you soon.</p>
+    <div class="flex justify-center gap-2">
+      <a href="{% url 'inquiry:create' %}" class="rounded-full px-4 py-2 ring-1 ring-emerald-900/10 bg-white/80 hover:bg-white">Send another</a>
+      <a href="{% url 'reception:dashboard' %}" class="rounded-full px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700">Home</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

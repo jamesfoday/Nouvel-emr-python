@@ -1,0 +1,139 @@
+{# templates/services/service_detail.html #}
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-6 md:p-8">
+  <div class="mx-auto max-w-4xl space-y-8">
+
+    {# ----- Top bar: title + edit/delete (for staff) ----------------------- #}
+    {% if request.user.is_authenticated and request.user.is_staff %}
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <a href="{% url 'services:edit' service.slug %}"
+           class="rounded-xl bg-emerald-100 text-emerald-800 px-4 py-2 text-sm">Edit</a>
+        <form method="post" action="{% url 'services:delete' service.slug %}"
+              onsubmit="return confirm('Delete this service?')">
+          {% csrf_token %}
+          <button class="rounded-xl bg-red-100 text-red-700 px-4 py-2 text-sm">Delete</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ----- Hero card ------------------------------------------------------- #}
+    <section class="relative">
+      <div class="rounded-3xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-6 md:px-10 pt-24 pb-8 md:pt-28 md:pb-10 text-white shadow-sm relative">
+        <div class="absolute left-1/2 -translate-x-1/2 top-4 md:top-6">
+          {% if service.hero_image %}
+            <img src="{{ service.hero_image.url }}"
+                 alt="{{ service.title }} hero"
+                 class="w-32 h-32 md:w-36 md:h-36 rounded-full object-cover ring-4 ring-white shadow" />
+          {% else %}
+            <div class="w-32 h-32 md:w-36 md:h-36 rounded-full bg-white/20 ring-4 ring-white grid place-items-center text-4xl md:text-5xl font-semibold">
+              {{ service.title|first|upper }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="mt-20 md:mt-24 flex items-center justify-between gap-6">
+          <div class="min-w-0">
+            <div class="text-2xl md:text-3xl font-semibold leading-tight drop-shadow-sm">
+              {{ service.title }}
+            </div>
+          </div>
+          <div>
+            <button type="button"
+                    id="open-book-modal"
+                    class="hidden md:inline-flex items-center justify-center rounded-full bg-white/90 text-emerald-800 px-6 py-2 font-semibold shadow hover:bg-white focus:outline-none focus:ring-2 focus:ring-white/60">
+              Book
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {# ----- Sections list --------------------------------------------------- #}
+    <section class="space-y-6">
+      {% for sec in service.sections.all %}
+        <article class="rounded-2xl bg-white ring-1 ring-black/5 p-5 md:p-6">
+          {% if sec.subtitle %}
+            <h2 class="text-center text-xl font-semibold text-gray-700 mb-4">
+              {{ sec.subtitle }}
+            </h2>
+          {% endif %}
+          {% if sec.description %}
+            <div class="rounded-xl bg-slate-100/70 ring-1 ring-slate-200 px-4 md:px-5 py-4 text-gray-700 leading-relaxed">
+              {{ sec.description|linebreaksbr }}
+            </div>
+          {% else %}
+            <div class="rounded-xl bg-slate-50 ring-1 ring-slate-200 px-4 py-4 text-slate-500 text-sm">
+              description here
+            </div>
+          {% endif %}
+        </article>
+      {% empty %}
+        <div class="rounded-xl bg-white ring-1 ring-black/5 p-6 text-gray-500">
+          No sections yet.
+        </div>
+      {% endfor %}
+    </section>
+  </div>
+</div>
+
+{# ==================== Sticky mobile Book button ========================== #}
+<button type="button"
+        id="open-book-modal-mobile"
+        class="md:hidden fixed right-4 z-40 font-semibold rounded-full text-white bg-emerald-600 shadow-lg px-6 py-2 text-sm hover:bg-emerald-700"
+        style="bottom: calc(1rem + env(safe-area-inset-bottom, 0px));">
+  Book
+</button>
+
+{# ==================== Centered Modal ====================================== #}
+<div id="book-modal"
+     class="fixed inset-0 z-50 hidden"
+     aria-modal="true" role="dialog" aria-labelledby="bookModalTitle">
+  <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" data-close></div>
+  <div class="relative z-10 w-full h-full flex items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white shadow-xl ring-1 ring-black/10 overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+        <h3 id="bookModalTitle" class="text-lg font-semibold text-slate-800">Book {{ service.title }}</h3>
+        <button type="button" class="h-8 w-8 grid place-items-center rounded-full hover:bg-slate-100" data-close aria-label="Close">✕</button>
+      </div>
+      <div class="p-5 space-y-4">
+        <p class="text-slate-600">
+          Booking modal content goes here. You can replace this with your appointment selector or HTMX-loaded partial.
+        </p>
+        <div class="flex justify-end">
+          <button type="button" class="px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700" data-close>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+  (function () {
+    const modal    = document.getElementById('book-modal');
+    const openDesk = document.getElementById('open-book-modal');
+    const openMob  = document.getElementById('open-book-modal-mobile');
+
+    function open()  { modal?.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+    function close() { modal?.classList.add('hidden');    document.body.style.overflow = ''; }
+
+    openDesk?.addEventListener('click', open);
+    openMob?.addEventListener('click', open);
+
+    modal?.addEventListener('click', (e) => {
+      if (e.target.hasAttribute('data-close')) close();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (!modal || modal.classList.contains('hidden')) return;
+      if (e.key === 'Escape') close();
+    });
+  })();
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,8 @@
+{# templates/reception/partials/dm_thread.html #}
+<div class="space-y-3">
+  {% for m in msgs %}
+    {% include "reception/partials/dm_message.html" with m=m %}
+  {% empty %}
+    <p class="text-gray-400">No messages yet. Say hello 👋</p>
+  {% endfor %}
+</div>

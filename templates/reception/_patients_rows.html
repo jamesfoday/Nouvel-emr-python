@@ -1,0 +1,7 @@
+{% for p in patients %}
+  {% include "reception/_patients_row.html" with p=p %}
+{% empty %}
+  <tr>
+    <td colspan="6" class="py-8 text-center text-slate-500">No patients found.</td>
+  </tr>
+{% endfor %}

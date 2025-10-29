@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-6 md:p-8">
+  <div class="mx-auto max-w-4xl space-y-6">
+
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-semibold text-emerald-900">Create Health Plan</h1>
+      <a href="{% url 'healthplans:staff_plans' %}"
+   class="rounded-full px-4 py-2 text-sm bg-white/80 ring-1 ring-emerald-900/10 hover:bg-white">Back</a>
+    </div>
+
+    <form method="post"
+          class="rounded-3xl bg-white/60 supports-[backdrop-filter]:bg-white/40 backdrop-blur ring-1 ring-emerald-900/10 shadow p-6 md:p-8 space-y-8">
+      {% csrf_token %}
+
+      {# =============== Basics ================================================= #}
+      <section class="space-y-4">
+        <h2 class="text-sm font-semibold text-emerald-900/70 tracking-wide">Basics</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+          <label class="block">
+            <span class="block text-sm font-medium mb-1">Name</span>
+            {{ form.name }}
+            {% if form.name.errors %}<p class="mt-1 text-sm text-red-600">{{ form.name.errors|join:", " }}</p>{% endif %}
+          </label>
+          <label class="block">
+            <span class="block text-sm font-medium mb-1">Slug</span>
+            {{ form.slug }}
+            <p class="mt-1 text-xs text-gray-500">Auto-generated from the name (you can edit).</p>
+            {% if form.slug.errors %}<p class="mt-1 text-sm text-red-600">{{ form.slug.errors|join:", " }}</p>{% endif %}
+          </label>
+        </div>
+        <label class="block">
+          <span class="block text-sm font-medium mb-1">Description</span>
+          {{ form.description }}
+        </label>
+      </section>
+
+      {# =============== Pricing & Billing ===================================== #}
+      <section class="space-y-4">
+        <h2 class="text-sm font-semibold text-emerald-900/70 tracking-wide">Pricing & Billing</h2>
+        <div class="grid md:grid-cols-3 gap-4">
+          <label class="block">
+            <span class="block text-sm font-medium mb-1">Interval</span>
+            {{ form.interval }}
+          </label>
+
+          <label class="block">
+            <span class="block text-sm font-medium mb-1">Price (€)</span>
+            <div class="relative">
+              <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">€</span>
+              {{ form.price }}
+            </div>
+            <p id="pricePreview" class="mt-1 text-xs text-gray-500">€0.00/month</p>
+          </label>
+
+          <label class="block">
+            <span class="block text-sm font-medium mb-1">Sort order</span>
+            {{ form.sort_order }}
+          </label>
+        </div>
+      </section>
+
+      {# =============== Cost Sharing ========================================== #}
+      <section class="space-y-4">
+        <h2 class="text-sm font-semibold text-emerald-900/70 tracking-wide">Cost Sharing</h2>
+        <div class="grid md:grid-cols-4 gap-4">
+          <label class="block">
+            <span class="block text-sm font-medium mb-1">Deductible (€)</span>
+            {{ form.deductible }}
+          </label>
+          <label class="block">
+            <span class="block text-sm font-medium mb-1">Copay (€)</span>
+            {{ form.copay }}
+          </label>
+          <label class="block">
+            <span class="block text-sm font-medium mb-1">Coinsurance (%)</span>
+            {{ form.coinsurance_pct }}
+          </label>
+          <label class="block">
+            <span class="block text-sm font-medium mb-1">OOP Max (€)</span>
+            {{ form.oop_max }}
+          </label>
+        </div>
+      </section>
+
+      {# =============== Limits & Region ======================================= #}
+      <section class="space-y-4">
+        <h2 class="text-sm font-semibold text-emerald-900/70 tracking-wide">Limits & Region</h2>
+        <div class="grid md:grid-cols-3 gap-4">
+          <label class="block">
+            <span class="block text-sm font-medium mb-1">Visits / period</span>
+            {{ form.visits_per_period }}
+          </label>
+          <label class="block md:col-span-2">
+            <span class="block text-sm font-medium mb-1">Region</span>
+            {{ form.region }}
+          </label>
+        </div>
+      </section>
+
+      {# =============== Options =============================================== #}
+      <section class="space-y-4">
+        <h2 class="text-sm font-semibold text-emerald-900/70 tracking-wide">Options</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+          <label class="block">
+            <span class="block text-sm font-medium mb-1">Plan Code</span>
+            {{ form.plan_code }}
+          </label>
+          <label class="block">
+            <span class="block text-sm font-medium mb-1">Stripe Price ID (optional)</span>
+            {{ form.stripe_price_id }}
+            <p class="mt-1 text-xs text-gray-500">For Stripe billing (e.g. <code>price_abc123</code>).</p>
+          </label>
+        </div>
+
+        <div class="flex flex-wrap gap-6 pt-2">
+          <label class="inline-flex items-center gap-2">
+            {{ form.includes_telehealth }}
+            <span class="text-sm">Includes telehealth</span>
+          </label>
+          <label class="inline-flex items-center gap-2">
+            {{ form.is_active }}
+            <span class="text-sm">Active</span>
+          </label>
+        </div>
+      </section>
+
+      {# =============== Actions ============================================== #}
+        <div class="flex items-center justify-end gap-3">
+    <a href="{% url 'healthplans:staff_plans' %}"
+        class="rounded-xl px-4 py-2 bg-white/80 ring-1 ring-emerald-900/10 hover:bg-white">
+        Cancel
+    </a>
+    <button class="rounded-xl px-5 py-2 bg-emerald-600 text-white font-semibold hover:bg-emerald-700">
+        Create Plan
+    </button>
+    </div>
+
+    </form>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+  (function () {
+    // Add consistent Tailwind-y classes to Django widgets
+    const ids = [
+      "id_name","id_slug","id_description","id_interval","id_price","id_sort_order",
+      "id_deductible","id_copay","id_coinsurance_pct","id_oop_max",
+      "id_visits_per_period","id_region","id_plan_code","id_stripe_price_id"
+    ];
+    ids.map(id => document.getElementById(id)).filter(Boolean).forEach(el => {
+      const base = ["w-full","rounded-xl","px-3","py-2","ring-1","ring-gray-200","focus:ring-emerald-500","outline-none","bg-white"];
+      if (el.tagName === "TEXTAREA") el.classList.add("min-h-[9rem]");
+      el.classList.add(...base);
+    });
+    // Move price text so it clears the € icon
+    document.getElementById("id_price")?.classList.add("pl-8");
+
+    // Auto-slug from name until user edits slug
+    const nameEl = document.getElementById("id_name");
+    const slugEl = document.getElementById("id_slug");
+    let slugDirty = false;
+    slugEl?.addEventListener('input', () => slugDirty = true);
+    nameEl?.addEventListener('input', () => {
+      if (slugDirty || !slugEl) return;
+      slugEl.value = (nameEl.value || "")
+        .toLowerCase().trim()
+        .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    });
+
+    // Price preview
+    const priceEl = document.getElementById("id_price");
+    const intEl   = document.getElementById("id_interval");
+    const prev    = document.getElementById("pricePreview");
+    function updatePreview(){
+      if (!prev) return;
+      const v = Number(priceEl?.value || 0).toFixed(2);
+      const it = intEl?.value || "month";
+      prev.textContent = `€${v}/${it}`;
+    }
+    priceEl?.addEventListener('input', updatePreview);
+    intEl?.addEventListener('change', updatePreview);
+    updatePreview();
+  })();
+</script>
+{% endblock %}
+{% endblock %}

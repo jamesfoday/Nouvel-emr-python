@@ -1,0 +1,37 @@
+{# templates/reception/partials/_calendar_grid.html #}
+
+
+<div class="overflow-x-auto">
+  <div class="min-w-[720px] grid grid-cols-7 gap-3">
+    {% for row in rows %}
+      <div class="rounded-2xl bg-white/70 ring-1 ring-black/5 p-3 flex flex-col">
+        <div class="mb-2 text-sm font-semibold text-gray-800">
+          {{ row.date|date:"D · M j" }}
+        </div>
+
+        {% if row.slots %}
+          <div class="flex flex-col gap-2">
+            {% for s in row.slots %}
+              <form
+                hx-post="{% url 'reception:reception_book_create' %}"
+                hx-target="#flash"
+                hx-swap="innerHTML"
+                class="contents">
+                <input type="hidden" name="clinician_id" value="{{ clinician_id }}">
+                <input type="hidden" name="patient_id" value="{{ patient_id }}">
+                <input type="hidden" name="start" value="{{ s.start }}">
+                <input type="hidden" name="end" value="{{ s.end }}">
+                <button type="submit"
+                        class="w-full text-left rounded-xl px-3 py-2 text-sm ring-1 ring-emerald-200/70 hover:ring-emerald-400 bg-emerald-50/60 hover:bg-emerald-100/80">
+                  {{ s.label }}
+                </button>
+              </form>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-xs text-gray-500">No free slots</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+</div>

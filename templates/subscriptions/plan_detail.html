@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-6 md:p-8 max-w-3xl mx-auto space-y-6">
+  <div class="rounded-3xl bg-white/60 supports-[backdrop-filter]:bg-white/40 backdrop-blur ring-1 ring-emerald-900/10 p-6">
+    <h1 class="text-2xl font-semibold text-emerald-900">{{ plan.name }}</h1>
+    <p class="mt-2 text-emerald-900/80">{{ plan.description }}</p>
+    <div class="mt-4 text-3xl font-bold text-emerald-800">{{ plan.price_display }}</div>
+    <form method="post" action="{% url 'subscriptions:subscribe' %}" class="mt-6">
+      {% csrf_token %}
+      <input type="hidden" name="plan_slug" value="{{ plan.slug }}">
+      <button class="rounded-full bg-emerald-600 text-white font-semibold px-6 py-2 hover:bg-emerald-700">Subscribe</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

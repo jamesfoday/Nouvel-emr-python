@@ -1,0 +1,23 @@
+{# templates/reception/partials/dm_message.html #}
+{% load tz %}
+
+{# We can compare inside an IF, not inside WITH #}
+{% if m.sender_id == request.user.id %}
+  <div class="flex justify-end">
+    <div class="max-w-[80%] rounded-2xl px-3 py-2 text-sm bg-emerald-600 text-white">
+      <div>{{ m.body }}</div>
+      <div class="mt-1 text-[11px] opacity-75">
+        {{ m.created_at|localtime|date:"M d, H:i" }}
+      </div>
+    </div>
+  </div>
+{% else %}
+  <div class="flex justify-start">
+    <div class="max-w-[80%] rounded-2xl px-3 py-2 text-sm bg-gray-100 text-gray-900">
+      <div>{{ m.body }}</div>
+      <div class="mt-1 text-[11px] opacity-75">
+        {{ m.created_at|localtime|date:"M d, H:i" }}
+      </div>
+    </div>
+  </div>
+{% endif %}
