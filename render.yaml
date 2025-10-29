@@ -1,9 +1,9 @@
 # ---------------------------------------------------------------------
-# Render Blueprint for Nouvel-EMR (Django + Celery + Beat + Postgres + Redis)
+# Render Blueprint for Nouvel-EMR — Free plan friendly
+# Web service + Postgres. Celery runs eagerly (no worker/beat needed).
 # ---------------------------------------------------------------------
 
 services:
-  # --- Web App -------------------------------------------------------
   - type: web
     name: nouvel-emr
     env: python
@@ -17,118 +17,53 @@ services:
       python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); import os; u=os.environ.get('DJANGO_SUPERUSER_EMAIL'); p=os.environ.get('DJANGO_SUPERUSER_PASSWORD'); User.objects.filter(email=u).exists() or User.objects.create_superuser(u, u, p)"
       # Production safety checks
       python manage.py check --deploy --fail-level WARNING
-    startCommand: gunicorn config.wsgi:application --workers=${WEB_CONCURRENCY:-2} --bind 0.0.0.0:10000
+    startCommand: gunicorn config.wsgi:application --workers=${WEB_CONCURRENCY:-2} --bind 0.0.0.0:$PORT
     envVars:
+      # Django settings module (prod)
       - key: DJANGO_SETTINGS_MODULE
         value: config.prod
-      - key: SECRET_KEY
+
+      # IMPORTANT: your settings expect DJANGO_SECRET_KEY
+      - key: DJANGO_SECRET_KEY
         generateValue: true
+
       - key: DJANGO_DEBUG
         value: False
+
+      # Hosts / CSRF
       - key: DJANGO_ALLOWED_HOSTS
         value: nouvel-emr.onrender.com,.onrender.com
       - key: DJANGO_CSRF_TRUSTED_ORIGINS
         value: https://nouvel-emr.onrender.com,https://*.onrender.com
+
+      # Proxy / timezone
       - key: USE_X_FORWARDED_PROTO
         value: True
       - key: DJANGO_TIME_ZONE
         value: Europe/Paris
+
+      # Python / workers
       - key: PYTHON_VERSION
         value: 3.13.0
       - key: WEB_CONCURRENCY
         value: 2
-      # DB / Redis
+
+      # Database connection
       - key: DATABASE_URL
         fromDatabase:
           name: nouvel-postgres
           property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: nouvel-redis
-          type: redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          name: nouvel-redis
-          type: redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          name: nouvel-redis
-          type: redis
-          property: connectionString
+
+      # Celery eager mode (matches your base.py default, but we enforce for clarity)
+      - key: CELERY_TASK_ALWAYS_EAGER
+        value: True
+
       # Auto superuser
       - key: DJANGO_SUPERUSER_EMAIL
         value: admin@nouvel-emr.com
       - key: DJANGO_SUPERUSER_PASSWORD
         generateValue: true
 
-  # --- Celery Worker -------------------------------------------------
-  - type: worker
-    name: nouvel-celery-worker
-    env: python
-    plan: free
-    buildCommand: |
-      pip install --upgrade pip
-      pip install -r requirements.txt
-    startCommand: celery -A config worker -l info --concurrency=2
-    envVars:
-      - key: DJANGO_SETTINGS_MODULE
-        value: config.prod
-      - key: DATABASE_URL
-        fromDatabase:
-          name: nouvel-postgres
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          name: nouvel-redis
-          type: redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          name: nouvel-redis
-          type: redis
-          property: connectionString
-      - key: DJANGO_DEBUG
-        value: False
-
-  # --- Celery Beat (Scheduler) --------------------------------------
-  - type: worker
-    name: nouvel-celery-beat
-    env: python
-    plan: free
-    buildCommand: |
-      pip install --upgrade pip
-      pip install -r requirements.txt
-    startCommand: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    envVars:
-      - key: DJANGO_SETTINGS_MODULE
-        value: config.prod
-      - key: DATABASE_URL
-        fromDatabase:
-          name: nouvel-postgres
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          name: nouvel-redis
-          type: redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          name: nouvel-redis
-          type: redis
-          property: connectionString
-      - key: DJANGO_DEBUG
-        value: False
-
-  # --- Redis (Broker + Cache) ---------------------------------------
-  - type: redis
-    name: nouvel-redis
-    plan: free
-    ipAllowList:
-      - source: 0.0.0.0/0   # allow all (simplest). tighten later to specific CIDRs if needed.
-
-# --- PostgreSQL Database ---------------------------------------------
 databases:
   - name: nouvel-postgres
     plan: free
