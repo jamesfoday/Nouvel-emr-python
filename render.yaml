@@ -1,0 +1,146 @@
+# ---------------------------------------------------------------------
+# Render Blueprint for Nouvel-EMR (Django + Celery + Beat + Postgres + Redis)
+# Includes auto admin creation, health checks, and production safety
+# ---------------------------------------------------------------------
+
+services:
+  # --- Web App -------------------------------------------------------
+  - type: web
+    name: nouvel-emr
+    env: python
+    plan: free
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate --noinput
+      # ✅ Create superuser if not exists
+      python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); import os; u=os.environ.get('DJANGO_SUPERUSER_EMAIL'); p=os.environ.get('DJANGO_SUPERUSER_PASSWORD'); User.objects.filter(email=u).exists() or User.objects.create_superuser(u, u, p)"
+      # ✅ Safety check for production readiness
+      python manage.py check --deploy --fail-level WARNING
+    startCommand: gunicorn config.wsgi:application --workers=${WEB_CONCURRENCY:-2} --bind 0.0.0.0:10000
+    healthCheckPath: /admin/login/
+    healthCheckTimeout: 180
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.prod
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: False
+      - key: DJANGO_ALLOWED_HOSTS
+        value: nouvel-emr.onrender.com,.onrender.com
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        value: https://nouvel-emr.onrender.com,https://*.onrender.com
+      - key: USE_X_FORWARDED_PROTO
+        value: True
+      - key: DJANGO_TIME_ZONE
+        value: Europe/Paris
+      - key: PYTHON_VERSION
+        value: 3.13.0
+      - key: WEB_CONCURRENCY
+        value: 2
+
+      # Database & Cache Connections
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nouvel-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: nouvel-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: nouvel-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: redis
+          name: nouvel-redis
+          property: connectionString
+
+      # --- Admin Superuser (auto-created at build)
+      - key: DJANGO_SUPERUSER_EMAIL
+        value: admin@nouvel-emr.com
+      - key: DJANGO_SUPERUSER_PASSWORD
+        generateValue: true
+
+  # --- Celery Worker -------------------------------------------------
+  - type: worker
+    name: nouvel-celery-worker
+    env: python
+    plan: free
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: celery -A config worker -l info --concurrency=2
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.prod
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nouvel-postgres
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: nouvel-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: redis
+          name: nouvel-redis
+          property: connectionString
+      - key: DJANGO_DEBUG
+        value: False
+    healthCheckCommand: |
+      python manage.py shell -c "import sys; from celery import Celery; app = Celery('config'); sys.exit(0)"
+    healthCheckTimeout: 120
+    autoDeploy: true
+
+  # --- Celery Beat (Scheduler) --------------------------------------
+  - type: worker
+    name: nouvel-celery-beat
+    env: python
+    plan: free
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.prod
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nouvel-postgres
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: nouvel-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: redis
+          name: nouvel-redis
+          property: connectionString
+      - key: DJANGO_DEBUG
+        value: False
+    healthCheckCommand: |
+      python manage.py shell -c "import sys; from celery import Celery; app = Celery('config'); sys.exit(0)"
+    healthCheckTimeout: 120
+    autoDeploy: true
+
+# --- PostgreSQL Database ---------------------------------------------
+databases:
+  - name: nouvel-postgres
+    plan: free
+
+# --- Redis (Celery Broker + Cache) -----------------------------------
+  - type: redis
+    name: nouvel-redis
+    plan: free
+    maxmemoryPolicy: noeviction

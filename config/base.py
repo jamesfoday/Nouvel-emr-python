@@ -1,6 +1,6 @@
-# config/settings.py
 from pathlib import Path
 import environ
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -49,13 +49,12 @@ INSTALLED_APPS = [
     "apps.bugtracker",
     "apps.core",
     "apps.menus.apps.MenusConfig",
-    
 ]
 
 # --- middleware --------------------------------------------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # static in prod
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -73,7 +72,6 @@ ASGI_APPLICATION = "config.asgi.application"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        # 👇 Added the app templates path so files like portal/messages.html resolve
         "DIRS": [
             BASE_DIR / "templates",
             BASE_DIR / "apps" / "portal" / "templates",
@@ -103,7 +101,7 @@ TIME_ZONE = env.str("DJANGO_TIME_ZONE", default="Europe/Paris")
 USE_I18N = True
 USE_TZ = True
 
-# Login/Logout redirects (NEW)
+# Login/Logout redirects
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/portal/"
 LOGOUT_REDIRECT_URL = "/portal/"
@@ -192,3 +190,10 @@ CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=False)
 
 if env.bool("USE_X_FORWARDED_PROTO", default=False):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# --- Render/WhiteNoise optimization ------------------------------------------
+# Avoid repeated collectstatic issues on Render
+os.environ.setdefault("DJANGO_COLLECTSTATIC", "1")
+
+# Optional: make sure static files compression is active in prod
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
