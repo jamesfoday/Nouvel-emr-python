@@ -24,9 +24,17 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    # Media via Cloudinary (media only; static stays on WhiteNoise)
+    "cloudinary",
+    "cloudinary_storage",
+
+    # APIs
     "rest_framework",
     "drf_spectacular",
     "corsheaders",
+
+    # Project apps
     "apps.accounts.apps.AccountsConfig",
     "apps.rbac",
     "apps.patients",
@@ -113,10 +121,30 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_ROOT = BASE_DIR / "media"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
+# Use WhiteNoise for static (manifest) and choose media storage based on env.
+USE_CLOUDINARY_MEDIA = env.bool("USE_CLOUDINARY_MEDIA", default=not DEBUG)
+CLOUDINARY_URL = env.str("CLOUDINARY_URL", default="")
+
 STORAGES = {
-    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    },
+    "default": {
+        # Cloudinary in prod (or when explicitly enabled), local FS in dev
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"
+        if (USE_CLOUDINARY_MEDIA and CLOUDINARY_URL)
+        else "django.core.files.storage.FileSystemStorage"
+    },
 }
+
+# Cloudinary extra options (media only)
+if USE_CLOUDINARY_MEDIA and CLOUDINARY_URL:
+    CLOUDINARY_STORAGE = {
+        "DEFAULT_TAGS": ["nouvel-emr"],
+        "PREFIX": "nouvel-emr/media",
+        "OVERWRITE": False,
+        # Leave FORMAT=None to keep the original format
+    }
 
 # --- DRF & OpenAPI -----------------------------------------------------------
 REST_FRAMEWORK = {
@@ -195,5 +223,4 @@ if env.bool("USE_X_FORWARDED_PROTO", default=False):
 # Avoid repeated collectstatic issues on Render
 os.environ.setdefault("DJANGO_COLLECTSTATIC", "1")
 
-# Optional: make sure static files compression is active in prod
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# (Do NOT set STATICFILES_STORAGE separately; STORAGES handles it.)

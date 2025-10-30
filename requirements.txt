@@ -30,3 +30,7 @@ gunicorn==23.0.0
 
 # --- Django storage / static handling ---
 Pillow==11.0.0  # for image fields, optional but common
+
+
+cloudinary==1.41.0
+django-cloudinary-storage==0.3.0
