@@ -4,7 +4,9 @@
 {% block content %}
 <form method="post" enctype="multipart/form-data" class="mx-auto max-w-4xl">
   {% csrf_token %}
+  {{ form.media }}
   {{ formset.management_form }}
+  {{ form.non_field_errors }}
   {% for hf in form.hidden_fields %}{{ hf }}{% endfor %}
 
   <div class="p-6 sm:p-8 rounded-3xl bg-emerald-50 ring-1 ring-emerald-100 space-y-6">
@@ -93,7 +95,7 @@
     {# ============================== Sections ================================= #}
     <div class="rounded-2xl bg-white shadow ring-1 ring-gray-200">
       <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-        <div class="text-lg font-semibold text-gray-700">Section</div>
+        <div class="text-lg font-semibold text-gray-700">Sections</div>
         <div class="flex items-center gap-2">
           <button type="button" id="btn-add-section"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 text-white hover:bg-emerald-700"
@@ -104,15 +106,45 @@
         </div>
       </div>
 
+      <div class="px-4 pt-3">
+        {{ formset.non_form_errors }}
+      </div>
+
       <div id="sections-container" class="p-4 space-y-4">
         {% for f in formset.forms %}
           <div class="rounded-xl ring-1 ring-gray-200 bg-gray-50/50 p-4 space-y-3 section-item">
-            {{ f.subtitle }}
-            {{ f.description }}
-            {{ f.order }}
+            {% for eh in f.non_field_errors %}<p class="text-sm text-red-600">{{ eh }}</p>{% endfor %}
+
+            <div>
+              {{ f.subtitle }}
+              {% if f.subtitle.errors %}
+                <p class="text-sm text-red-600 mt-1">{{ f.subtitle.errors|join:", " }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              {{ f.description }}
+              {% if f.description.errors %}
+                <p class="text-sm text-red-600 mt-1">{{ f.description.errors|join:", " }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              {{ f.order }}
+              {% if f.order.errors %}
+                <p class="text-sm text-red-600 mt-1">{{ f.order.errors|join:", " }}</p>
+              {% endif %}
+            </div>
+
             <input type="hidden" name="{{ f.heading.html_name }}" value="{{ f.heading.value|default:'Section' }}">
+
             {% for hf in f.hidden_fields %}{{ hf }}{% endfor %}
-            {% if f.DELETE %}{{ f.DELETE }}{% endif %}
+
+            {% if f.DELETE %}
+              <label class="inline-flex items-center gap-2 text-sm text-slate-600">
+                {{ f.DELETE }} <span>Delete this section</span>
+              </label>
+            {% endif %}
           </div>
         {% empty %}
           {# nothing rendered; JS will inject the first form from the template #}
@@ -133,7 +165,7 @@
     </div>
   </div>
 
-  {# Template for new section #}
+  {# ====================== Template for new section (JS clone) ====================== #}
   <template id="section-template">
     <div class="rounded-xl ring-1 ring-gray-200 bg-gray-50/50 p-4 space-y-3 section-item">
       <input type="text"
@@ -167,6 +199,7 @@
     const p = document.getElementById('preview-wrap');
     const empty = document.getElementById('dz-empty');
     if (p) p.style.display = 'flex';
+    if (empty) empty.style.display = 'flex';
     if (empty) empty.style.display = 'none';
   }
   function hidePreviewUI() {
@@ -178,7 +211,6 @@
 
   function setPreviewFromFile(file) {
     if (!file) return;
-    // Use FileReader for Safari reliability
     try {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -186,7 +218,7 @@
         if (img) img.src = e.target.result;
         const clear = document.getElementById('hero-clear');
         const labelTxt = document.getElementById('dz-label');
-        if (clear) clear.value = "";           // not clearing anymore
+        if (clear) clear.value = "";
         if (labelTxt) labelTxt.textContent = "Change image";
         showPreviewUI();
       };
@@ -218,7 +250,7 @@
 
     if (fileInput) fileInput.value = "";
     if (img) img.removeAttribute('src');
-    if (clear) clear.value = "on";            // tell Django to clear existing image
+    if (clear) clear.value = "on";  // tell Django to clear existing image
     if (labelTxt) labelTxt.textContent = "Upload image";
     hidePreviewUI();
   }
@@ -227,11 +259,7 @@
   (function(){
     const fileInput  = document.getElementById('{{ form.hero_image.id_for_label }}');
     const initialUrl = document.getElementById('drop-wrap')?.dataset?.initialUrl;
-
-    // Existing image on edit
     if (initialUrl) setPreviewURL(initialUrl);
-
-    // Change (picker selection)
     fileInput?.addEventListener('change', function(){
       if (this.files && this.files[0]) setPreviewFromFile(this.files[0]);
     });
@@ -250,7 +278,7 @@
     dz && dz.classList.remove('ring-4','ring-white/60');
   }
 
-  // ========== Sections add/remove (unchanged) ================================
+  // ========== Sections add/remove ============================================
   (function(){
     const container = document.getElementById('sections-container');
     const addBtn = document.getElementById('btn-add-section');

@@ -5,9 +5,9 @@ from django.db.models import Q
 from django.forms import modelform_factory
 from django.shortcuts import get_object_or_404, redirect, render, resolve_url
 from django.utils.text import slugify
-
+from .forms import ServiceSectionFormSet
 from .models import Service
-
+from django.db import transaction
 
 # ----------------------------- helpers ---------------------------------
 def is_staff_or_superuser(user):
@@ -131,45 +131,48 @@ def service_list(request):
 @login_required
 @user_passes_test(is_staff_or_superuser)
 def service_create(request):
-    """
-    Staff-only create view. Auto-fills 'slug' from 'title' if available and empty.
-    """
     Form = _service_form()
 
     if request.method == "POST":
         form = Form(request.POST, request.FILES)
-        if form.is_valid():
-            obj = form.save(commit=False)
+        formset = ServiceSectionFormSet(request.POST, request.FILES, prefix="sections")
+        if form.is_valid() and formset.is_valid():
+            with transaction.atomic():
+                obj = form.save(commit=False)
 
-            # Auto slug if model has 'slug' field and it's blank
-            if _has_field(Service, "slug"):
-                cur_slug = getattr(obj, "slug", "") or ""
-                # Prefer title for slug source if present, else any text-like field
-                if not cur_slug:
-                    if _has_field(Service, "title") and getattr(obj, "title", None):
-                        obj.slug = _unique_slug(getattr(obj, "title"))
-                    else:
-                        obj.slug = _unique_slug(str(obj))
+                # Auto slug if missing
+                if _has_field(Service, "slug"):
+                    cur_slug = getattr(obj, "slug", "") or ""
+                    if not cur_slug:
+                        if _has_field(Service, "title") and getattr(obj, "title", None):
+                            obj.slug = _unique_slug(getattr(obj, "title"))
+                        else:
+                            obj.slug = _unique_slug(str(obj))
 
-            obj.save()
-            # Save M2M if present
-            if hasattr(form, "save_m2m"):
-                form.save_m2m()
+                obj.save()
+                if hasattr(form, "save_m2m"):
+                    form.save_m2m()
+
+                # tie sections to this service and save
+                formset.instance = obj
+                formset.save()
 
             messages.success(request, "Service created.")
             return redirect(resolve_url("services:list"))
     else:
         form = Form()
+        formset = ServiceSectionFormSet(prefix="sections")
 
-    return render(request, "services/service_form.html", {"form": form, "is_create": True})
+    return render(
+        request,
+        "services/service_form.html",
+        {"form": form, "formset": formset, "is_create": True},
+    )
 
 
 @login_required
 @user_passes_test(is_staff_or_superuser)
 def service_update(request, slug):
-    """
-    Staff-only update view. If slug field exists and is blank, regenerate from title.
-    """
     instance = (
         get_object_or_404(Service, slug=slug)
         if _has_field(Service, "slug")
@@ -179,28 +182,39 @@ def service_update(request, slug):
 
     if request.method == "POST":
         form = Form(request.POST, request.FILES, instance=instance)
-        if form.is_valid():
-            obj = form.save(commit=False)
+        formset = ServiceSectionFormSet(
+            request.POST, request.FILES, instance=instance, prefix="sections"
+        )
+        if form.is_valid() and formset.is_valid():
+            with transaction.atomic():
+                obj = form.save(commit=False)
 
-            if _has_field(Service, "slug"):
-                cur_slug = getattr(obj, "slug", "") or ""
-                if not cur_slug:
-                    if _has_field(Service, "title") and getattr(obj, "title", None):
-                        obj.slug = _unique_slug(getattr(obj, "title"))
-                    else:
-                        obj.slug = _unique_slug(str(obj))
+                if _has_field(Service, "slug"):
+                    cur_slug = getattr(obj, "slug", "") or ""
+                    if not cur_slug:
+                        if _has_field(Service, "title") and getattr(obj, "title", None):
+                            obj.slug = _unique_slug(getattr(obj, "title"))
+                        else:
+                            obj.slug = _unique_slug(str(obj))
 
-            obj.save()
-            if hasattr(form, "save_m2m"):
-                form.save_m2m()
+                obj.save()
+                if hasattr(form, "save_m2m"):
+                    form.save_m2m()
+
+                formset.instance = obj
+                formset.save()
 
             messages.success(request, "Service updated.")
             return redirect(resolve_url("services:list"))
     else:
         form = Form(instance=instance)
+        formset = ServiceSectionFormSet(instance=instance, prefix="sections")
 
-    return render(request, "services/service_form.html", {"form": form, "is_create": False, "instance": instance})
-
+    return render(
+        request,
+        "services/service_form.html",
+        {"form": form, "formset": formset, "is_create": False, "instance": instance},
+    )
 
 @login_required
 @user_passes_test(is_staff_or_superuser)
