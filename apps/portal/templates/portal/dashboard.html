@@ -152,9 +152,9 @@
       <div class="grid grid-cols-2 gap-4">
         <a href="{% url 'portal_ui:appts_list' %}" class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
           <div class="shortcut-circle relative">
-            <img src="{% static 'img/shortcuts/appointments.svg' %}" alt="Appointments" class="w-8 h-8"
+            <img src="{% static 'img/shortcuts/calculator.svg' %}" alt="Appointments" class="w-8 h-8"
                  onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
-            <span class="hidden absolute inset-0 place-items-center text-2xl">🗓️</span>
+            
           </div>
           <div class="text-base font-semibold">Appointments</div>
         </a>
@@ -163,16 +163,16 @@
           <div class="shortcut-circle relative">
             <img src="{% static 'img/shortcuts/tests.svg' %}" alt="Tests" class="w-8 h-8"
                  onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
-            <span class="hidden absolute inset-0 place-items-center text-2xl">🧪</span>
+            
           </div>
           <div class="text-base font-semibold">Tests</div>
         </a>
 
         <a href="{% url 'portal_ui:rx_list' %}" class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-gray-100">
           <div class="shortcut-circle relative">
-            <img src="{% static 'img/shortcuts/prescription.svg' %}" alt="Prescription" class="w-8 h-8"
+            <img src="{% static 'img/shortcuts/pencil.svg' %}" alt="Prescription" class="w-8 h-8"
                  onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
-            <span class="hidden absolute inset-0 place-items-center text-2xl">💬</span>
+            
           </div>
           <div class="text-base font-semibold">Prescription</div>
         </a>
@@ -181,7 +181,7 @@
           <div class="shortcut-circle relative">
             <img src="{% static 'img/shortcuts/messages.svg' %}" alt="Documents" class="w-8 h-8"
                  onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
-            <span class="hidden absolute inset-0 place-items-center text-2xl">📄</span>
+           
           </div>
           <div class="text-base font-semibold">Documents</div>
         </a>
@@ -239,7 +239,7 @@
     <!-- Right button (fallback: Prescription) -->
     <a href="{{ primary_shortcuts.1.href|default:'#p-msgs' }}" class="dock-btn">
       <span class="dock-btn__circle">
-        <img src="{% static 'img/shortcuts/' %}{{ primary_shortcuts.1.icon|default:'prescription.svg' }}" alt="" onerror="this.remove()">
+        <img src="{% static 'img/shortcuts/' %}{{ primary_shortcuts.1.icon|default:'pencil.svg' }}" alt="" onerror="this.remove()">
       </span>
       <span class="dock-btn__label">{{ primary_shortcuts.1.label|default:"Prescription" }}</span>
     </a>
@@ -267,7 +267,7 @@
       {% else %}
         <a href="{% url 'portal_ui:appts_list' %}" class="offcanvas__item">
           <span class="offcanvas__circle">
-            <img src="{% static 'img/shortcuts/appointments.svg' %}" alt="" onerror="this.remove()">
+            <img src="{% static 'img/shortcuts/calculator.svg' %}" alt="" onerror="this.remove()">
           </span>
           <span class="offcanvas__label">Appointments</span>
         </a>
