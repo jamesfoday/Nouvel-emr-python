@@ -252,7 +252,7 @@
     <!--  Wired Patients (mobile) -->
     <a href="{% url 'patients_ui:reception_patients_list' %}" class="dock-btn">
       <span class="dock-btn__circle">
-        <img src="{% static 'img/shortcuts/patient.svg' %}" alt="" onerror="this.remove()">
+        <img src="{% static 'img/shortcuts/people.svg' %}" alt="" onerror="this.remove()">
       </span>
       <span class="dock-btn__label">Patients</span>
     </a>
@@ -273,7 +273,7 @@
         <span class="offcanvas__label">Services</span>
       </a>
       <a href="{% url 'invoices:list' %}" class="offcanvas__item">
-        <span class="offcanvas__circle"><img src="{% static 'img/shortcuts/invoice.svg' %}" alt="" onerror="this.remove()"></span>
+        <span class="offcanvas__circle"><img src="{% static 'img/shortcuts/doc.svg' %}" alt="" onerror="this.remove()"></span>
         <span class="offcanvas__label">Invoice</span>
       </a>
       <a href="{% url 'healthplans:staff_plans' %}" class="offcanvas__item">
@@ -286,7 +286,7 @@
       </a>
       <!-- Patients shortcut (off-canvas) -->
       <a href="{% url 'patients_ui:reception_patients_list' %}" class="offcanvas__item">
-        <span class="offcanvas__circle"><img src="{% static 'img/shortcuts/patient.svg' %}" alt="" onerror="this.remove()"></span>
+        <span class="offcanvas__circle"><img src="{% static 'img/shortcuts/people.svg' %}" alt="" onerror="this.remove()"></span>
         <span class="offcanvas__label">Patients</span>
       </a>
     </div>
