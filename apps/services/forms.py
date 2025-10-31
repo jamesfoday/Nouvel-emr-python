@@ -1,6 +1,6 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Service, ServiceSection  # adjust import paths if different
+from .models import Service, ServiceSection, ServiceCategory  # adjust import paths if different
 
 # Tailwind-ish classes reused
 _BASE_INPUT = "w-full rounded-2xl border border-white/40 bg-white/60 px-3 py-2.5"
@@ -15,9 +15,17 @@ def _first_existing(model_cls, candidates):
 
 
 class ServiceForm(forms.ModelForm):
+
+    categories = forms.ModelMultipleChoiceField(
+        queryset=ServiceCategory.objects.filter(is_public=True).order_by("order", "name"),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Categories",
+    )
+
     class Meta:
         model = Service
-        fields = "__all__"
+        fields = ["title", "slug", "hero_image", "summary", "description", "categories"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

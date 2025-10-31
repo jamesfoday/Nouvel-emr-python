@@ -44,9 +44,17 @@
           <div class="rounded-xl bg-emerald-50/80 ring-1 ring-emerald-900/10 p-3 min-h-[92px]">
             <div class="font-semibold text-emerald-950 mb-1 line-clamp-1">{{ s.title }}</div>
             <p class="text-sm text-emerald-900/70 leading-snug line-clamp-2">
-              {% if s.summary %}{{ s.summary|truncatechars:120 }}
-              {% elif s.description %}{{ s.description|striptags|truncatechars:120 }}
-              {% else %}Details coming soon.{% endif %}
+              {% with sec=s.sections.all.0 %}
+                {% if s.summary %}
+                  {{ s.summary|truncatechars:120 }}
+                {% elif s.description %}
+                  {{ s.description|striptags|truncatechars:120 }}
+                {% elif sec and sec.description %}
+                  {{ sec.description|striptags|truncatechars:120 }}
+                {% else %}
+                  Details coming soon.
+                {% endif %}
+              {% endwith %}
             </p>
           </div>
           <div class="mt-3">

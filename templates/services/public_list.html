@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<section class="py-10 md:py-14">
+  <div class="max-w-8xl mx-auto px-4 md:px-6">
+
+    <!-- 2-col grid: fixed sidebar + fluid main; STRETCH rows -->
+    <div class="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-y-6 lg:gap-y-0 lg:gap-x-6 items-stretch">
+
+      <!-- Sidebar -->
+      <aside class="h-full">
+        <!-- Mobile collapsible -->
+        <details class="lg:hidden mb-3 rounded-2xl bg-white/70 backdrop-blur ring-1 ring-emerald-900/10 open:shadow-sm">
+          <summary class="list-none cursor-pointer px-4 py-3 flex items-center justify-between">
+            <span class="text-sm font-semibold text-emerald-900">Filter by Category</span>
+            <span class="text-xs px-2 py-1 rounded-full bg-emerald-600 text-white">Open</span>
+          </summary>
+          <div class="px-2 pb-3">
+            <nav class="space-y-1">
+              <a href="{% url 'services:public_list' %}{% if q %}?q={{ q|urlencode }}{% endif %}"
+                 class="group flex items-center justify-between gap-3 px-3 py-2 rounded-xl
+                        {% if not current_cat %}bg-emerald-600 text-white{% else %}bg-white text-emerald-900 ring-1 ring-emerald-900/10{% endif %}">
+                <span class="flex items-center gap-2">
+                  <span class="grid h-6 w-6 place-items-center rounded-full {% if not current_cat %}bg-white/15{% else %}bg-emerald-100 text-emerald-700{% endif %}">✦</span>
+                  <span class="text-sm font-semibold">All</span>
+                </span>
+              </a>
+
+              {% for c in categories %}
+                <a href="{% url 'services:public_list' %}?cat={{ c.slug }}{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   class="group flex items-center justify-between gap-3 px-3 py-2 rounded-xl
+                          {% if current_cat == c.slug %}bg-emerald-600 text-white{% else %}bg-white text-emerald-900 ring-1 ring-emerald-900/10 hover:ring-emerald-900/20{% endif %}">
+                  <span class="flex items-center gap-2">
+                    <span class="grid h-6 w-6 place-items-center rounded-full {% if current_cat == c.slug %}bg-white/15{% else %}bg-emerald-100 text-emerald-700{% endif %}">{{ c.name|first }}</span>
+                    <span class="text-sm font-medium">{{ c.name }}</span>
+                  </span>
+                  {% if c.num %}
+                    <span class="text-xs px-2 py-0.5 rounded-full {% if current_cat == c.slug %}bg-white/15 text-white{% else %}bg-emerald-50 text-emerald-700 ring-1 ring-emerald-900/10{% endif %}">{{ c.num }}</span>
+                  {% endif %}
+                </a>
+              {% endfor %}
+            </nav>
+          </div>
+        </details>
+
+        <!-- Desktop panel: fills full column height -->
+        <div class="hidden lg:flex h-full">
+          <div class="flex flex-col h-full rounded-2xl bg-white/70 backdrop-blur ring-1 ring-emerald-900/10 p-4 w-full">
+            <h3 class="text-sm font-semibold text-emerald-900 text-center mb-2">Categories</h3>
+
+            <!-- Fills remaining height; scrolls inside if needed -->
+            <nav class="flex-1 space-y-1 overflow-auto">
+              <a href="{% url 'services:public_list' %}{% if q %}?q={{ q|urlencode }}{% endif %}"
+                 class="group flex items-center justify-between gap-3 px-3 py-1.5 rounded-xl
+                        {% if not current_cat %}bg-emerald-600 text-white{% else %}bg-white text-emerald-900 ring-1 ring-emerald-900/10 hover:ring-emerald-900/20{% endif %}"
+                 {% if not current_cat %}aria-current="page"{% endif %}>
+                <span class="flex items-center gap-2">
+                  <span class="grid h-6 w-6 place-items-center rounded-full {% if not current_cat %}bg-white/15{% else %}bg-emerald-100 text-emerald-700{% endif %}">✦</span>
+                  <span class="text-sm font-semibold">All</span>
+                </span>
+              </a>
+
+              {% for c in categories %}
+                <a href="{% url 'services:public_list' %}?cat={{ c.slug }}{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   class="group flex items-center justify-between gap-3 px-3 py-1.5 rounded-xl
+                          {% if current_cat == c.slug %}bg-emerald-600 text-white{% else %}bg-white text-emerald-900 ring-1 ring-emerald-900/10 hover:ring-emerald-900/20{% endif %}"
+                   {% if current_cat == c.slug %}aria-current="page"{% endif %}>
+                  <span class="flex items-center gap-2">
+                    <span class="grid h-6 w-6 place-items-center rounded-full {% if current_cat == c.slug %}bg-white/15{% else %}bg-emerald-100 text-emerald-700{% endif %}">
+                      {{ c.name|first }}
+                    </span>
+                    <span class="text-sm font-medium">{{ c.name }}</span>
+                  </span>
+                  {% if c.num %}
+                    <span class="text-xs px-2 py-0.5 rounded-full {% if current_cat == c.slug %}bg-white/15 text-white{% else %}bg-emerald-50 text-emerald-700 ring-1 ring-emerald-900/10{% endif %}">
+                      {{ c.num }}
+                    </span>
+                  {% endif %}
+                </a>
+              {% endfor %}
+            </nav>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main -->
+      <section class="h-full">
+        <!-- Search -->
+        <div class="flex items-end justify-center lg:justify-start gap-3 mb-4">
+          <form method="get" action="" class="w-full max-w-xl">
+            <label class="sr-only" for="q">Search services</label>
+            <div class="flex items-center gap-2">
+              <input id="q" name="q" value="{{ q|default_if_none:'' }}"
+                     placeholder="Search services..."
+                     class="w-full rounded-xl bg-white px-3 py-2.5 ring-1 ring-emerald-900/10 focus:ring-emerald-500" />
+              {% if current_cat %}
+                <input type="hidden" name="cat" value="{{ current_cat }}">
+              {% endif %}
+              <button class="rounded-xl px-4 py-2 bg-emerald-600 text-white font-semibold hover:bg-emerald-500">
+                Search
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Cards grid -->
+        <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {% for s in services %}
+            <article class="w-full rounded-2xl bg-white ring-1 ring-emerald-900/10 shadow-sm overflow-hidden">
+              <a href="{% if s.slug %}{% url 'services:detail' s.slug %}{% else %}#{% endif %}" class="relative block h-40">
+                {% if s.hero_image %}
+                  <img src="{{ s.hero_image.url }}" alt="{{ s.title }}" loading="lazy" class="absolute inset-0 w-full h-full object-cover">
+                {% else %}
+                  <img src="{% static 'img/service-fallback.jpg' %}" alt="{{ s.title }}" class="absolute inset-0 w-full h-full object-cover">
+                {% endif %}
+                <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/40 to-cyan-500/30"></div>
+                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                  {% if s.hero_image %}
+                    <img src="{{ s.hero_image.url }}" alt="" loading="lazy" class="w-24 h-24 rounded-full object-cover ring-4 ring-white shadow-lg">
+                  {% else %}
+                    <img src="{% static 'img/service-fallback.jpg' %}" alt="" class="w-24 h-24 rounded-full object-cover ring-4 ring-white shadow-lg">
+                  {% endif %}
+                </div>
+              </a>
+
+              <div class="p-4">
+                <div class="rounded-xl bg-emerald-50/80 ring-1 ring-emerald-900/10 p-3 min-h-[92px]">
+                  <div class="font-semibold text-emerald-950 mb-1 line-clamp-1">{{ s.title }}</div>
+                  <p class="text-sm text-emerald-900/70 leading-snug line-clamp-2">
+                    {% with sec=s.sections.all.0 %}
+                      {% if s.summary %}
+                        {{ s.summary|truncatechars:120 }}
+                      {% elif s.description %}
+                        {{ s.description|striptags|truncatechars:120 }}
+                      {% elif sec and sec.description %}
+                        {{ sec.description|striptags|truncatechars:120 }}
+                      {% else %}
+                        Details coming soon.
+                      {% endif %}
+                    {% endwith %}
+                  </p>
+                </div>
+
+                <div class="mt-3">
+                  {% if s.slug %}
+                    <a href="{% url 'services:detail' s.slug %}"
+                       class="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500">
+                      view
+                    </a>
+                  {% else %}
+                    <span class="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-semibold bg-gray-200 text-gray-600">
+                      view
+                    </span>
+                  {% endif %}
+                </div>
+              </div>
+            </article>
+          {% empty %}
+            <div class="col-span-full text-center text-emerald-900/60 py-10">
+              No services match your search.
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -152,15 +152,20 @@
     </div>
   </section>
 
-  <!-- SERVICES GRID -->
-  <section id="our-services" class="py-12 md:py-16">
-    <div class="max-w-6xl mx-auto px-4 md:px-6">
-      <div class="flex items-end justify-between gap-3">
-        <div>
-          <h2 class="text-2xl md:text-3xl font-extrabold text-emerald-950">Services</h2>
-          <p class="text-emerald-900/70 mt-1">Explore what we offer across care and diagnostics.</p>
-        </div>
+<!-- SERVICES GRID -->
+<section id="our-services" class="py-12 md:py-16">
+  <div class="max-w-6xl mx-auto px-4 md:px-6">
+    <div class="flex items-end justify-between gap-3">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-extrabold text-emerald-950">Services</h2>
+        <p class="text-emerald-900/70 mt-1">Explore what we offer across care and diagnostics.</p>
+      </div>
 
+      <div class="flex items-center gap-2">
+        <a href="{% url 'services:public_list' %}"
+           class="inline-flex items-center px-4 py-2 rounded-xl bg-white ring-1 ring-emerald-900/10 text-emerald-900 font-semibold hover:bg-emerald-50">
+          See all
+        </a>
         {% if request.user.is_superuser or request.user.is_staff %}
           <a href="{% url 'services:list' %}"
              class="hidden md:inline-flex items-center px-4 py-2 rounded-xl bg-white ring-1 ring-emerald-900/10 text-emerald-900 font-semibold hover:bg-emerald-50">
@@ -168,61 +173,83 @@
           </a>
         {% endif %}
       </div>
+    </div>
 
-      <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-        {% for s in services_grid %}
-        <article class="rounded-2xl bg-white ring-1 ring-emerald-900/10 shadow-sm overflow-hidden">
-          <a href="{% if s.slug %}{% url 'services:detail' s.slug %}{% else %}#{% endif %}" class="relative block h-40">
+    <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+      {% for s in services_grid %}
+      <article class="rounded-2xl bg-white ring-1 ring-emerald-900/10 shadow-sm overflow-hidden">
+        <a href="{% if s.slug %}{% url 'services:detail' s.slug %}{% else %}#{% endif %}" class="relative block h-40">
+          {% if s.image_url %}
+            <img src="{{ s.image_url }}" alt="{{ s.title }}" loading="lazy" class="absolute inset-0 w-full h-full object-cover">
+          {% elif s.hero_image %}
+            <img src="{{ s.hero_image.url }}" alt="{{ s.title }}" loading="lazy" class="absolute inset-0 w-full h-full object-cover">
+          {% else %}
+            <img src="{% static 'img/service-fallback.jpg' %}" alt="{{ s.title }}" class="absolute inset-0 w-full h-full object-cover">
+          {% endif %}
+          <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/40 to-cyan-500/30"></div>
+
+          <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             {% if s.image_url %}
-              <img src="{{ s.image_url }}" alt="{{ s.title }}" loading="lazy" class="absolute inset-0 w-full h-full object-cover">
+              <img src="{{ s.image_url }}" alt="" loading="lazy" class="w-24 h-24 rounded-full object-cover ring-4 ring-white shadow-lg">
+            {% elif s.hero_image %}
+              <img src="{{ s.hero_image.url }}" alt="" loading="lazy" class="w-24 h-24 rounded-full object-cover ring-4 ring-white shadow-lg">
             {% else %}
-              <img src="{% static 'img/service-fallback.jpg' %}" alt="{{ s.title }}" class="absolute inset-0 w-full h-full object-cover">
+              <img src="{% static 'img/service-fallback.jpg' %}" alt="" class="w-24 h-24 rounded-full object-cover ring-4 ring-white shadow-lg">
             {% endif %}
-            <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/40 to-cyan-500/30"></div>
-
-            <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              {% if s.image_url %}
-                <img src="{{ s.image_url }}" alt="" loading="lazy" class="w-24 h-24 rounded-full object-cover ring-4 ring-white shadow-lg">
-              {% else %}
-                <img src="{% static 'img/service-fallback.jpg' %}" alt="" class="w-24 h-24 rounded-full object-cover ring-4 ring-white shadow-lg">
-              {% endif %}
-            </div>
-          </a>
-
-          <div class="p-4">
-            <div class="rounded-xl bg-emerald-50/80 ring-1 ring-emerald-900/10 p-3 min-h-[92px]">
-              <div class="font-semibold text-emerald-950 mb-1 line-clamp-1">
-                {{ s.title }}
-              </div>
-              <p class="text-sm text-emerald-900/70 leading-snug line-clamp-2">
-                {% if s.summary %}{{ s.summary|truncatechars:120 }}
-                {% elif s.description %}{{ s.description|striptags|truncatechars:120 }}
-                {% else %}Details coming soon.{% endif %}
-              </p>
-            </div>
-
-            <div class="mt-3">
-              {% if s.slug %}
-                <a href="{% url 'services:detail' s.slug %}"
-                   class="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500">
-                  view
-                </a>
-              {% else %}
-                <span class="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-semibold bg-gray-200 text-gray-600">
-                  view
-                </span>
-              {% endif %}
-            </div>
           </div>
-        </article>
-        {% empty %}
+        </a>
+
+        <div class="p-4">
+          <div class="rounded-xl bg-emerald-50/80 ring-1 ring-emerald-900/10 p-3 min-h-[92px]">
+            <div class="font-semibold text-emerald-950 mb-1 line-clamp-1">
+              {{ s.title }}
+            </div>
+
+            {# Prefer an explicit summary if you later add one to Service #}
+            {% with snippet=None %}
+              {% if s.summary %}
+                {% with snippet=s.summary %}{% endwith %}
+              {% else %}
+                {# Fallback: use first section's description #}
+                {% with firstsec=s.sections.all.0 %}
+                  {% if firstsec %}
+                    {% with snippet=firstsec.description %}{% endwith %}
+                  {% endif %}
+                {% endwith %}
+              {% endif %}
+
+             <p class="text-sm text-emerald-900/70 leading-snug line-clamp-2">
+            {% if s.snippet %}{{ s.snippet|striptags|truncatechars:120 }}{% else %}Details coming soon.{% endif %}
+            </p>
+
+            {% endwith %}
+          </div>
+
+          <div class="mt-3">
+            {% if s.slug %}
+              <a href="{% url 'services:detail' s.slug %}"
+                 class="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500">
+                view
+              </a>
+            {% else %}
+              <span class="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-semibold bg-gray-200 text-gray-600">
+                view
+              </span>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+      {% empty %}
         <div class="col-span-full text-center text-emerald-900/60 py-10">
           No services to show yet.
         </div>
-        {% endfor %}
-      </div>
+      {% endfor %}
     </div>
-  </section>
+  </div>
+</section>
+
+
+
 
   <!-- VISION & MISSION -->
   <section id="vision-mission" class="py-12 md:py-16 bg-emerald-900/5">

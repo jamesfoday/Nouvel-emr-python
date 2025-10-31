@@ -1,13 +1,16 @@
 # apps/services/views.py
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.db import transaction
 from django.db.models import Q
 from django.forms import modelform_factory
 from django.shortcuts import get_object_or_404, redirect, render, resolve_url
 from django.utils.text import slugify
+from django import forms
+
 from .forms import ServiceSectionFormSet
-from .models import Service
-from django.db import transaction
+from .models import Service, ServiceCategory
+
 
 # ----------------------------- helpers ---------------------------------
 def is_staff_or_superuser(user):
@@ -38,44 +41,120 @@ def _unique_slug(base: str) -> str:
         i += 1
 
 
-def _service_form():
-    """
-    Build a ModelForm for Service that includes all editable concrete fields.
-    Works even if your model has custom fields.
-    """
-    # Pick editable, concrete (no reverse relations / m2o auto), keep M2M if editable.
-    include_names = []
-    for f in Service._meta.get_fields():
-        # Skip auto created reverse relations etc.
-        if getattr(f, "auto_created", False):
-            continue
-        # Concrete fields or M2M are okay if editable
-        if getattr(f, "editable", False):
-            # Some relation fields can be non-concrete but editable; allow.
-            include_names.append(f.name)
-
-    # Fallback: if nothing found, let modelform_factory decide (rare)
-    if not include_names:
-        return modelform_factory(Service, fields="__all__")
-
-    return modelform_factory(Service, fields=include_names)
-
-
-# ----------------------------- PUBLIC ----------------------------------
-# /services/browse/?q=...
-def service_catalog(request):
-    """
-    Public, anonymous-friendly catalog view used by the homepage search.
-    """
-    q = (request.GET.get("q") or "").strip()
-
-    qs = Service.objects.all()
-
-    # Prefer active/public rows if those fields exist
+# Centralized public queryset: only public/active if present, newest first.
+def _public_qs():
+    qs = Service.objects.all().prefetch_related("sections", "categories")
     if _has_field(Service, "is_active"):
         qs = qs.filter(is_active=True)
     if _has_field(Service, "is_public"):
         qs = qs.filter(is_public=True)
+    if _has_field(Service, "created_at"):
+        qs = qs.order_by("-created_at", "title")
+    else:
+        qs = qs.order_by("title")
+    return qs
+
+
+def recent_services(limit=6):
+    """Return the latest N services for the homepage grid."""
+    return _public_qs()[:limit]
+
+
+def _service_form():
+    """
+    Build a ModelForm for Service that includes all editable concrete fields,
+    and force 'categories' to render as CheckboxSelectMultiple so selections bind.
+    """
+    include_names = []
+    for f in Service._meta.get_fields():
+        if getattr(f, "auto_created", False):
+            continue  # skip reverse relations
+        if getattr(f, "editable", False):
+            include_names.append(f.name)
+
+    widgets = {}
+
+    # Force categories -> checkboxes if the field exists and is M2M
+    try:
+        field = Service._meta.get_field("categories")
+        if getattr(field, "many_to_many", False):
+            widgets["categories"] = forms.CheckboxSelectMultiple(
+                attrs={"class": "grid grid-cols-2 gap-2 md:grid-cols-3"}
+            )
+    except Exception:
+        pass
+
+    # Nice input styling for title (optional)
+    if "title" in include_names:
+        widgets["title"] = forms.TextInput(
+            attrs={
+                "placeholder": "Service title",
+                "class": "w-full rounded-xl bg-white px-3 py-3 ring-1 ring-gray-200 focus:ring-emerald-500",
+            }
+        )
+
+    return modelform_factory(Service, fields=(include_names or "__all__"), widgets=widgets)
+
+
+# ----------------------------- PUBLIC PAGES ------------------------------
+def services_public_list(request):
+    """
+    Public 'See all services' page with optional search (?q=) and
+    optional category filter (?cat=<category-slug>).
+    """
+    q = (request.GET.get("q") or "").strip()
+    cat_slug = (request.GET.get("cat") or "").strip()
+
+    qs = _public_qs()
+
+    # category filter
+    active_category = None
+    if cat_slug:
+        active_category = ServiceCategory.objects.filter(slug=cat_slug, is_public=True).first()
+        if active_category:
+            qs = qs.filter(categories=active_category)
+
+    # search filter
+    if q:
+        q_obj = Q(title__icontains=q)
+        if _has_field(Service, "summary"):
+            q_obj |= Q(summary__icontains=q)
+        if _has_field(Service, "description"):
+            q_obj |= Q(description__icontains=q)
+        # also search within sections
+        q_obj |= Q(sections__subtitle__icontains=q) | Q(sections__description__icontains=q)
+        qs = qs.filter(q_obj).distinct()
+
+    categories = ServiceCategory.objects.filter(is_public=True).order_by("order", "name")
+
+    return render(
+        request,
+        "services/public_list.html",
+        {
+            "services": qs,
+            "q": q,
+            "categories": categories,
+            "active_category": active_category,
+        },
+    )
+
+
+# /services/browse/?q=... (homepage search target)
+def service_catalog(request):
+    """
+    Public, anonymous-friendly catalog view used by the homepage search.
+    Supports ?q= and optional ?cat= like the public_list to keep UX aligned.
+    """
+    q = (request.GET.get("q") or "").strip()
+    cat_slug = (request.GET.get("cat") or "").strip()
+
+    qs = _public_qs()
+
+    active_category = None
+    if cat_slug:
+        active_category = ServiceCategory.objects.filter(slug=cat_slug, is_public=True).first()
+        if active_category:
+            qs = qs.filter(categories=active_category)
 
     if q:
         q_obj = Q(title__icontains=q)
@@ -83,26 +162,36 @@ def service_catalog(request):
             q_obj |= Q(summary__icontains=q)
         if _has_field(Service, "description"):
             q_obj |= Q(description__icontains=q)
-        qs = qs.filter(q_obj)
+        q_obj |= Q(sections__subtitle__icontains=q) | Q(sections__description__icontains=q)
+        qs = qs.filter(q_obj).distinct()
 
-    if _has_field(Service, "created_at"):
-        qs = qs.order_by("-created_at")
-    else:
-        qs = qs.order_by("title")
+    categories = ServiceCategory.objects.filter(is_public=True).order_by("order", "name")
 
-    # Use a public-facing template; if you prefer, you can reuse your grid template instead.
-    return render(request, "services/catalog.html", {"services": qs, "q": q})
+    return render(
+        request,
+        "services/catalog.html",
+        {
+            "services": qs,
+            "q": q,
+            "categories": categories,
+            "active_category": active_category,
+        },
+    )
 
 
 def service_detail(request, slug):
     """
     Public detail page for a service.
     """
-    service = get_object_or_404(Service, slug=slug) if _has_field(Service, "slug") else get_object_or_404(Service, pk=slug)
+    service = (
+        get_object_or_404(Service.objects.prefetch_related("sections", "categories"), slug=slug)
+        if _has_field(Service, "slug")
+        else get_object_or_404(Service.objects.prefetch_related("sections", "categories"), pk=slug)
+    )
     return render(request, "services/service_detail.html", {"service": service})
 
 
-# ----------------------------- STAFF -----------------------------------
+# ----------------------------- STAFF PAGES -----------------------------------
 @login_required
 @user_passes_test(is_staff_or_superuser)
 def service_list(request):
@@ -110,7 +199,7 @@ def service_list(request):
     Staff-only index with actions (create/edit/delete).
     """
     q = (request.GET.get("q") or "").strip()
-    qs = Service.objects.all()
+    qs = Service.objects.all().prefetch_related("categories", "sections")
 
     if q:
         q_obj = Q(title__icontains=q)
@@ -118,7 +207,8 @@ def service_list(request):
             q_obj |= Q(summary__icontains=q)
         if _has_field(Service, "description"):
             q_obj |= Q(description__icontains=q)
-        qs = qs.filter(q_obj)
+        q_obj |= Q(sections__subtitle__icontains=q) | Q(sections__description__icontains=q)
+        qs = qs.filter(q_obj).distinct()
 
     if _has_field(Service, "created_at"):
         qs = qs.order_by("-created_at")
@@ -216,6 +306,7 @@ def service_update(request, slug):
         {"form": form, "formset": formset, "is_create": False, "instance": instance},
     )
 
+
 @login_required
 @user_passes_test(is_staff_or_superuser)
 def service_delete(request, slug):
@@ -234,5 +325,4 @@ def service_delete(request, slug):
         messages.success(request, f"Service “{title}” deleted.")
         return redirect(resolve_url("services:list"))
 
-    # Render a simple confirmation template (create it if missing)
     return render(request, "services/service_confirm_delete.html", {"service": instance})

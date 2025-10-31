@@ -9,7 +9,7 @@
     {% if request.user.is_authenticated and request.user.is_staff %}
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <a href="{% url 'services:edit' service.slug %}"
+        <a href="{% url 'services:update' service.slug %}"
            class="rounded-xl bg-emerald-100 text-emerald-800 px-4 py-2 text-sm">Edit</a>
         <form method="post" action="{% url 'services:delete' service.slug %}"
               onsubmit="return confirm('Delete this service?')">

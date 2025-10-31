@@ -19,7 +19,6 @@
          class="relative"
          data-initial-url="{% if form.instance.hero_image %}{{ form.instance.hero_image.url }}{% endif %}">
 
-      {# Real file input (visually hidden, still focusable/label-clickable) #}
       <input
         type="file"
         name="{{ form.hero_image.html_name }}"
@@ -29,23 +28,15 @@
         aria-label="Upload service hero image"
       />
 
-      {# Hidden clear field for Django (imitates ClearableFileInput) #}
-      <input type="hidden"
-             id="hero-clear"
-             name="{{ form.hero_image.html_name }}-clear"
-             value="">
+      <input type="hidden" id="hero-clear" name="{{ form.hero_image.html_name }}-clear" value="">
 
-      {# Visual dropzone (label opens picker). The preview sits INSIDE this card. #}
       <label for="{{ form.hero_image.id_for_label }}"
              id="dropzone"
              class="block rounded-2xl p-6 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white/90 shadow-inner cursor-pointer select-none"
              ondragover="event.preventDefault(); this.classList.add('ring-4','ring-white/60')"
              ondragleave="this.classList.remove('ring-4','ring-white/60')"
              ondrop="handleDrop(event)">
-
         <div class="border-2 border-dashed border-white/60 rounded-xl h-36 grid place-items-center relative overflow-hidden">
-
-          {# Empty state (icon + text). Hidden when preview is visible. #}
           <div id="dz-empty" class="text-center" style="display:flex; flex-direction:column; align-items:center;">
             <div class="mx-auto mb-1 w-8 h-8">
               <svg viewBox="0 0 24 24" fill="none" class="w-8 h-8" aria-hidden="true">
@@ -59,14 +50,9 @@
             <div class="text-xs opacity-90">Click or drag & drop</div>
           </div>
 
-          {# Inline preview container (centered). Hidden by default. #}
-          <div id="preview-wrap"
-               class="flex items-center justify-center"
-               style="display:none;">
+          <div id="preview-wrap" class="flex items-center justify-center" style="display:none;">
             <div class="relative">
-              <img id="preview-img"
-                   src=""
-                   alt="Selected image preview"
+              <img id="preview-img" src="" alt="Selected image preview"
                    class="w-28 h-28 rounded-full object-cover ring-4 ring-white shadow-md" />
               <button type="button"
                       id="btn-clear-image"
@@ -75,7 +61,6 @@
                       onclick="event.preventDefault(); event.stopPropagation(); clearPreview();">×</button>
             </div>
           </div>
-
         </div>
       </label>
     </div>
@@ -86,10 +71,44 @@
 
     {# =============================== Title =================================== #}
     <div>
+      <label class="block text-sm font-medium text-emerald-900 mb-1">Title</label>
       {{ form.title }}
       {% if form.title.errors %}
         <p class="mt-1 text-sm text-red-600">{{ form.title.errors|join:", " }}</p>
       {% endif %}
+    </div>
+
+    {# =============================== Categories (nice UI) ===================== #}
+    <div>
+      <label class="block text-sm font-medium text-emerald-900 mb-1">Categories</label>
+
+      {# Closed state: chips summary + toggle #}
+      <button type="button"
+              id="cat-toggle"
+              class="w-full flex items-center justify-between rounded-xl bg-white/80 ring-1 ring-emerald-900/15 px-3 py-2 text-sm hover:bg-white">
+        <span id="cat-summary" class="flex flex-wrap gap-2">
+          {# JS will populate selected chips; show placeholder initially #}
+          <span class="text-emerald-900/60">Choose categories…</span>
+        </span>
+        <span class="text-emerald-700">▾</span>
+      </button>
+
+      {# Dropdown panel with checkboxes (rendered from the bound field) #}
+      <div id="cat-panel"
+           class="mt-2 rounded-xl bg-white ring-1 ring-emerald-900/10 shadow p-3 hidden">
+        <div class="grid sm:grid-cols-2 gap-2 max-h-56 overflow-auto pr-1">
+          {% for checkbox in form.categories %}
+            <label class="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-emerald-50 cursor-pointer">
+              {{ checkbox.tag }}
+              <span class="text-sm text-emerald-900">{{ checkbox.choice_label }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        {% if form.categories.errors %}
+          <p class="mt-2 text-sm text-red-600">{{ form.categories.errors|join:", " }}</p>
+        {% endif %}
+        <p class="mt-2 text-xs text-emerald-900/60">Tip: select multiple; click outside to close.</p>
+      </div>
     </div>
 
     {# ============================== Sections ================================= #}
@@ -115,29 +134,11 @@
           <div class="rounded-xl ring-1 ring-gray-200 bg-gray-50/50 p-4 space-y-3 section-item">
             {% for eh in f.non_field_errors %}<p class="text-sm text-red-600">{{ eh }}</p>{% endfor %}
 
-            <div>
-              {{ f.subtitle }}
-              {% if f.subtitle.errors %}
-                <p class="text-sm text-red-600 mt-1">{{ f.subtitle.errors|join:", " }}</p>
-              {% endif %}
-            </div>
-
-            <div>
-              {{ f.description }}
-              {% if f.description.errors %}
-                <p class="text-sm text-red-600 mt-1">{{ f.description.errors|join:", " }}</p>
-              {% endif %}
-            </div>
-
-            <div>
-              {{ f.order }}
-              {% if f.order.errors %}
-                <p class="text-sm text-red-600 mt-1">{{ f.order.errors|join:", " }}</p>
-              {% endif %}
-            </div>
+            <div>{{ f.subtitle }}{% if f.subtitle.errors %}<p class="text-sm text-red-600 mt-1">{{ f.subtitle.errors|join:", " }}</p>{% endif %}</div>
+            <div>{{ f.description }}{% if f.description.errors %}<p class="text-sm text-red-600 mt-1">{{ f.description.errors|join:", " }}</p>{% endif %}</div>
+            <div>{{ f.order }}{% if f.order.errors %}<p class="text-sm text-red-600 mt-1">{{ f.order.errors|join:", " }}</p>{% endif %}</div>
 
             <input type="hidden" name="{{ f.heading.html_name }}" value="{{ f.heading.value|default:'Section' }}">
-
             {% for hf in f.hidden_fields %}{{ hf }}{% endfor %}
 
             {% if f.DELETE %}
@@ -147,7 +148,6 @@
             {% endif %}
           </div>
         {% empty %}
-          {# nothing rendered; JS will inject the first form from the template #}
         {% endfor %}
       </div>
     </div>
@@ -168,25 +168,15 @@
   {# ====================== Template for new section (JS clone) ====================== #}
   <template id="section-template">
     <div class="rounded-xl ring-1 ring-gray-200 bg-gray-50/50 p-4 space-y-3 section-item">
-      <input type="text"
-             name="{{ formset.empty_form.subtitle.html_name|escape }}"
+      <input type="text" name="{{ formset.empty_form.subtitle.html_name|escape }}"
              placeholder="sub title"
              class="w-full rounded-xl bg-white px-3 py-3 ring-1 ring-gray-200 focus:ring-emerald-500" />
-
-      <textarea name="{{ formset.empty_form.description.html_name|escape }}"
-                rows="6"
-                placeholder="Description"
+      <textarea name="{{ formset.empty_form.description.html_name|escape }}" rows="6" placeholder="Description"
                 class="w-full rounded-xl bg-white px-3 py-3 ring-1 ring-gray-200 focus:ring-emerald-500"></textarea>
-
-      <input type="number"
-             name="{{ formset.empty_form.order.html_name|escape }}"
+      <input type="number" name="{{ formset.empty_form.order.html_name|escape }}"
              value="{{ formset.empty_form.order.value|default:0 }}"
              class="w-full rounded-xl bg-white px-3 py-3 ring-1 ring-gray-200 focus:ring-emerald-500" />
-
-      <input type="hidden"
-             name="{{ formset.empty_form.heading.html_name|escape }}"
-             value="Section" />
-
+      <input type="hidden" name="{{ formset.empty_form.heading.html_name|escape }}" value="Section" />
       {% for hf in formset.empty_form.hidden_fields %}{{ hf.as_widget }}{% endfor %}
       {% if formset.empty_form.DELETE %}{{ formset.empty_form.DELETE }}{% endif %}
     </div>
@@ -194,131 +184,71 @@
 </form>
 
 <script>
-  // ========== Preview helpers =================================================
-  function showPreviewUI() {
-    const p = document.getElementById('preview-wrap');
-    const empty = document.getElementById('dz-empty');
-    if (p) p.style.display = 'flex';
-    if (empty) empty.style.display = 'flex';
-    if (empty) empty.style.display = 'none';
-  }
-  function hidePreviewUI() {
-    const p = document.getElementById('preview-wrap');
-    const empty = document.getElementById('dz-empty');
-    if (p) p.style.display = 'none';
-    if (empty) empty.style.display = 'flex';
-  }
+  // ---------------- Image preview ----------------
+  function showPreviewUI(){ const p=document.getElementById('preview-wrap'); const e=document.getElementById('dz-empty'); if(p)p.style.display='flex'; if(e){e.style.display='flex'; e.style.display='none';} }
+  function hidePreviewUI(){ const p=document.getElementById('preview-wrap'); const e=document.getElementById('dz-empty'); if(p)p.style.display='none'; if(e)e.style.display='flex'; }
+  function setPreviewFromFile(file){ if(!file)return; try{ const r=new FileReader(); r.onload=(ev)=>{ const img=document.getElementById('preview-img'); if(img)img.src=ev.target.result; const c=document.getElementById('hero-clear'); const l=document.getElementById('dz-label'); if(c)c.value=""; if(l)l.textContent="Change image"; showPreviewUI(); }; r.readAsDataURL(file);}catch(err){ const url=URL.createObjectURL(file); setPreviewURL(url); setTimeout(()=>URL.revokeObjectURL(url),8000);} }
+  function setPreviewURL(url){ const img=document.getElementById('preview-img'); const c=document.getElementById('hero-clear'); const l=document.getElementById('dz-label'); if(img&&url){ img.src=url; if(c)c.value=""; if(l)l.textContent="Change image"; showPreviewUI(); } }
+  function clearPreview(){ const fi=document.getElementById('{{ form.hero_image.id_for_label }}'); const img=document.getElementById('preview-img'); const c=document.getElementById('hero-clear'); const l=document.getElementById('dz-label'); if(fi)fi.value=""; if(img)img.removeAttribute('src'); if(c)c.value="on"; if(l)l.textContent="Upload image"; hidePreviewUI(); }
+  (function(){ const fi=document.getElementById('{{ form.hero_image.id_for_label }}'); const init=document.getElementById('drop-wrap')?.dataset?.initialUrl; if(init) setPreviewURL(init); fi?.addEventListener('change', function(){ if(this.files&&this.files[0]) setPreviewFromFile(this.files[0]); }); })();
+  function handleDrop(e){ e.preventDefault(); const fi=document.getElementById('{{ form.hero_image.id_for_label }}'); if(e.dataTransfer?.files?.length){ const f=e.dataTransfer.files[0]; if(fi) fi.files=e.dataTransfer.files; setPreviewFromFile(f); } const dz=document.getElementById('dropzone'); dz&&dz.classList.remove('ring-4','ring-white/60'); }
 
-  function setPreviewFromFile(file) {
-    if (!file) return;
-    try {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = document.getElementById('preview-img');
-        if (img) img.src = e.target.result;
-        const clear = document.getElementById('hero-clear');
-        const labelTxt = document.getElementById('dz-label');
-        if (clear) clear.value = "";
-        if (labelTxt) labelTxt.textContent = "Change image";
-        showPreviewUI();
-      };
-      reader.readAsDataURL(file);
-    } catch (err) {
-      const url = URL.createObjectURL(file);
-      setPreviewURL(url);
-      setTimeout(() => URL.revokeObjectURL(url), 8000);
-    }
-  }
-
-  function setPreviewURL(url) {
-    const img = document.getElementById('preview-img');
-    const clear = document.getElementById('hero-clear');
-    const labelTxt = document.getElementById('dz-label');
-    if (img && url) {
-      img.src = url;
-      if (clear) clear.value = "";
-      if (labelTxt) labelTxt.textContent = "Change image";
-      showPreviewUI();
-    }
-  }
-
-  function clearPreview() {
-    const fileInput = document.getElementById('{{ form.hero_image.id_for_label }}');
-    const img  = document.getElementById('preview-img');
-    const clear = document.getElementById('hero-clear');
-    const labelTxt = document.getElementById('dz-label');
-
-    if (fileInput) fileInput.value = "";
-    if (img) img.removeAttribute('src');
-    if (clear) clear.value = "on";  // tell Django to clear existing image
-    if (labelTxt) labelTxt.textContent = "Upload image";
-    hidePreviewUI();
-  }
-
-  // ========== Init & events ===================================================
+  // ---------------- Sections add/remove ----------------
   (function(){
-    const fileInput  = document.getElementById('{{ form.hero_image.id_for_label }}');
-    const initialUrl = document.getElementById('drop-wrap')?.dataset?.initialUrl;
-    if (initialUrl) setPreviewURL(initialUrl);
-    fileInput?.addEventListener('change', function(){
-      if (this.files && this.files[0]) setPreviewFromFile(this.files[0]);
-    });
+    const container=document.getElementById('sections-container');
+    const addBtn=document.getElementById('btn-add-section');
+    const removeBtn=document.getElementById('btn-remove-section');
+    const tmpl=document.getElementById('section-template').innerHTML;
+    const prefix="{{ formset.prefix }}";
+    const totalInput=document.querySelector(`input[name="${prefix}-TOTAL_FORMS"]`);
+    const maxInput=document.querySelector(`input[name="${prefix}-MAX_NUM_FORMS"]`);
+    const emptyPrefix='__prefix__';
+    function currentTotal(){ return parseInt(totalInput?.value || '0',10); }
+    function maxForms(){ return parseInt(maxInput?.value || '1000',10); }
+    function addOne(){
+      if(currentTotal()>=maxForms()) return;
+      const idx=currentTotal();
+      const html=tmpl.replaceAll(`${prefix}-${emptyPrefix}`,`${prefix}-${idx}`)
+                     .replaceAll(`-${emptyPrefix}-`, `-${idx}-`)
+                     .replaceAll(`[${emptyPrefix}]`, `[${idx}]`);
+      const div=document.createElement('div'); div.innerHTML=html.trim();
+      container.appendChild(div.firstElementChild);
+      if(totalInput) totalInput.value=idx+1;
+    }
+    function removeLast(){
+      const items=container.querySelectorAll('.section-item'); if(!items.length) return;
+      items[items.length-1].remove();
+      if(totalInput) totalInput.value=Math.max(0,currentTotal()-1);
+      if(!container.querySelector('.section-item') && currentTotal()===0) addOne();
+    }
+    addBtn&&addBtn.addEventListener('click', addOne);
+    removeBtn&&removeBtn.addEventListener('click', removeLast);
+    if(!container.querySelector('.section-item') && currentTotal()===0) addOne();
   })();
 
-  // ========== Drag & drop onto the label ====================================
-  function handleDrop(e){
-    e.preventDefault();
-    const fileInput = document.getElementById('{{ form.hero_image.id_for_label }}');
-    if (e.dataTransfer?.files?.length) {
-      const file = e.dataTransfer.files[0];
-      if (fileInput) fileInput.files = e.dataTransfer.files; // keep form submit normal
-      setPreviewFromFile(file);
-    }
-    const dz = document.getElementById('dropzone');
-    dz && dz.classList.remove('ring-4','ring-white/60');
-  }
-
-  // ========== Sections add/remove ============================================
+  // ---------------- Categories dropdown + chips summary ----------------
   (function(){
-    const container = document.getElementById('sections-container');
-    const addBtn = document.getElementById('btn-add-section');
-    const removeBtn = document.getElementById('btn-remove-section');
-    const tmpl = document.getElementById('section-template').innerHTML;
+    const toggle = document.getElementById('cat-toggle');
+    const panel  = document.getElementById('cat-panel');
+    const summary= document.getElementById('cat-summary');
 
-    const prefix = "{{ formset.prefix }}";
-    const totalInput = document.querySelector(`input[name="${prefix}-TOTAL_FORMS"]`);
-    const maxInput   = document.querySelector(`input[name="${prefix}-MAX_NUM_FORMS"]`);
-    const emptyPrefix = '__prefix__';
-
-    function currentTotal(){ return parseInt(totalInput?.value || '0', 10); }
-    function maxForms(){ return parseInt(maxInput?.value || '1000', 10); }
-
-    function addOne(){
-      if (currentTotal() >= maxForms()) return;
-      const idx = currentTotal();
-      const html = tmpl
-        .replaceAll(`${prefix}-${emptyPrefix}`, `${prefix}-${idx}`)
-        .replaceAll(`-${emptyPrefix}-`, `-${idx}-`)
-        .replaceAll(`[${emptyPrefix}]`, `[${idx}]`);
-      const div = document.createElement('div');
-      div.innerHTML = html.trim();
-      container.appendChild(div.firstElementChild);
-      if (totalInput) totalInput.value = idx + 1;
+    function updateSummary(){
+      const checks = panel.querySelectorAll('input[type="checkbox"]');
+      const chosen = [];
+      checks.forEach(c => { if (c.checked) { const label = c.parentElement.querySelector('span'); if(label) chosen.push(label.textContent.trim()); }});
+      if (!chosen.length){
+        summary.innerHTML = '<span class="text-emerald-900/60">Choose categories…</span>';
+      } else {
+        summary.innerHTML = chosen.map(t => `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-emerald-50 ring-1 ring-emerald-900/10 text-emerald-800">${t}</span>`).join(' ');
+      }
     }
 
-    function removeLast(){
-      const items = container.querySelectorAll('.section-item');
-      if (!items.length) return;
-      items[items.length - 1].remove();
-      if (totalInput) totalInput.value = Math.max(0, currentTotal() - 1);
-      if (!container.querySelector('.section-item') && currentTotal() === 0) addOne();
-    }
-
-    addBtn && addBtn.addEventListener('click', addOne);
-    removeBtn && removeBtn.addEventListener('click', removeLast);
-
-    // Ensure at least one section exists
-    if (!container.querySelector('.section-item') && currentTotal() === 0) addOne();
+    toggle?.addEventListener('click', ()=>{ panel.classList.toggle('hidden'); });
+    document.addEventListener('click', (e)=>{
+      if (!panel.contains(e.target) && !toggle.contains(e.target)) panel.classList.add('hidden');
+    });
+    panel.addEventListener('change', updateSummary);
+    updateSummary(); // initial (for edit form)
   })();
 </script>
 {% endblock %}
