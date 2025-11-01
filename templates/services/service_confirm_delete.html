@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<section class="py-12">
+  <div class="max-w-lg mx-auto px-4">
+    <div class="rounded-2xl bg-white/80 backdrop-blur ring-1 ring-emerald-900/10 p-6 shadow-sm">
+      <h1 class="text-xl font-semibold text-emerald-900 mb-3">
+        Delete service?
+      </h1>
+      <p class="text-emerald-900/80 mb-6">
+        You’re about to permanently delete
+        <span class="font-semibold">{{ service.title }}</span>.
+        This action cannot be undone.
+      </p>
+
+      <form method="post" class="flex items-center gap-3">
+        {% csrf_token %}
+        <button type="submit"
+                class="inline-flex items-center px-4 py-2 rounded-xl font-semibold bg-rose-600 text-white hover:bg-rose-500">
+          Delete
+        </button>
+
+        {# Cancel back to detail if possible, otherwise to list #}
+        {% if service.slug %}
+          <a href="{% url 'services:detail' service.slug %}"
+             class="inline-flex items-center px-4 py-2 rounded-xl font-semibold ring-1 ring-emerald-900/10 bg-white text-emerald-900 hover:bg-emerald-50">
+            Cancel
+          </a>
+        {% else %}
+          <a href="{% url 'services:public_list' %}"
+             class="inline-flex items-center px-4 py-2 rounded-xl font-semibold ring-1 ring-emerald-900/10 bg-white text-emerald-900 hover:bg-emerald-50">
+            Cancel
+          </a>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}
