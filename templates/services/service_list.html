@@ -5,10 +5,16 @@
 <div class="max-w-6xl mx-auto px-4 md:px-6 py-8">
   <div class="flex items-center justify-between">
     <h1 class="text-2xl font-bold text-emerald-950">Services (staff)</h1>
+    <div class="lex items-center justify-between gap-3 flex-wrap">
+       <a href="{% url 'reception:dashboard' %}" class="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+        Home
+      </a>
     <a href="{% url 'services:create' %}"
-       class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-500">
+       class="px-4 py-2 rounded-xl bg-gray-900 text-white font-semibold hover:bg-emerald-500">
       + Create
     </a>
+    </div>
+     
   </div>
 
   <form method="get" class="mt-4">

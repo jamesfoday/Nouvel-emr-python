@@ -137,19 +137,15 @@
 
       <div class="space-y-3">
         {% for q in recent_inquiries %}
-          <div class="flex items-center justify-between border rounded-xl px-3 py-2">
+          <div class="flex items-center justify-between border rounded-xl px-3 py-2 bg-white/80 hover:bg-white">
             <div>
               <div class="text-sm font-medium">{{ q.name }}</div>
               <div class="text-xs text-gray-500">{{ q.created_at|date:"M d" }}</div>
             </div>
-            <button
-              class="text-xs px-3 py-1 rounded-xl bg-gray-900 text-white"
-              hx-get="{% url 'reception:inquiry_view' q.pk %}"
-              hx-target="#modal"
-              hx-swap="innerHTML"
-              hx-trigger="click">
-              View Info
-            </button>
+         <a href="{% url 'inquiry:list' %}"
+           class="inline-flex items-center rounded-xl bg-gray-900 px-3 py-1.5 text-sm font-medium text-white">
+          See all
+        </a>
           </div>
         {% empty %}
           <div class="p-6 text-sm text-gray-500">No recent inquiries.</div>

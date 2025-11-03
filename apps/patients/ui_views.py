@@ -129,12 +129,24 @@ def _assign_patient_to_clinician(patient: Patient, clinician) -> None:
 def _require_reception(request) -> bool:
     """
     Reception access gate:
-      - staff
-      - has ANY of these roles: reception, receptionist, frontdesk (names normalized by RBAC)
-      - superuser always allowed (via has_role default)
+      - superuser: always allowed
+      - has ANY of roles: reception, receptionist, frontdesk
+      - OR is_staff (fallback)
     """
-    return (getattr(request.user, "is_staff", False)
-            and has_role(request.user, "reception", "receptionist", "frontdesk"))
+    user = request.user
+    if not getattr(user, "is_authenticated", False):
+        return False
+
+    # Superuser always allowed
+    if getattr(user, "is_superuser", False):
+        return True
+
+    # Explicit reception-type roles
+    if has_role(user, "reception", "receptionist", "frontdesk"):
+        return True
+
+    # Fallback: any staff user
+    return getattr(user, "is_staff", False)
 
 
 def _is_htmx(request: HttpRequest) -> bool:
@@ -542,7 +554,7 @@ def reception_patients_list(request: HttpRequest):
     """
     if not _require_reception(request):
         messages.error(request, "Not allowed.")
-        return redirect("home")
+        return redirect("patients_ui:patients_home")
 
     q = (request.GET.get("q") or "").strip()
     base = Patient.objects.all()

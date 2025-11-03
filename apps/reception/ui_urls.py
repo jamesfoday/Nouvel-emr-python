@@ -43,4 +43,5 @@ urlpatterns = [
     path("inquiry/<int:pk>/", ui_views.inquiry_modal, name="inquiry_view"),
     path("dm/thread/", ui_views.dm_thread, name="dm_thread"),
     path("dm/send/",   ui_views.dm_send,   name="dm_send"),
+    
 ]

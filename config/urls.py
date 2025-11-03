@@ -15,6 +15,7 @@ from apps.accounts.views import PortalLoginView, StaffLoginView
 urlpatterns = [
     # ---------- Site (public / home) ----------
     # Home now served by apps.core.urls (e.g., templates/home.html)
+    
     path("", include(("apps.core.urls", "core"), namespace="core")),
 
     # Admin

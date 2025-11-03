@@ -14,17 +14,28 @@ from .models import Invite
 from apps.rbac.models import RoleBinding
 from ..audit.utils import log_event
 
+
 # ----------------------- Patient Portal Login (email OR phone) -----------------------
 class PortalLoginForm(forms.Form):
     identifier = forms.CharField(
         required=True,
         label="Email or phone",
-        widget=forms.TextInput(attrs={"autocomplete": "username", "placeholder": "you@example.com or +1 555 123 4567"}),
+        widget=forms.TextInput(
+            attrs={
+                "autocomplete": "username",
+                "placeholder": "you@example.com or +1 555 123 4567",
+            }
+        ),
     )
     password = forms.CharField(
         required=True,
         label="Password",
-        widget=forms.PasswordInput(attrs={"autocomplete": "current-password", "placeholder": "••••••••"}),
+        widget=forms.PasswordInput(
+            attrs={
+                "autocomplete": "current-password",
+                "placeholder": "••••••••",
+            }
+        ),
     )
     remember_me = forms.BooleanField(required=False, initial=True)
 
@@ -34,14 +45,24 @@ class PortalLoginView(TemplateView):
 
     def get(self, request, *args, **kwargs):
         form = PortalLoginForm(initial={"remember_me": True})
-        return render(request, self.template_name, {"form": form, "next": request.GET.get("next", "")})
+        return render(
+            request,
+            self.template_name,
+            {"form": form, "next": request.GET.get("next", "")},
+        )
 
     def post(self, request, *args, **kwargs):
         form = PortalLoginForm(request.POST or None)
-        next_url = request.POST.get("next") or request.GET.get("next") or getattr(settings, "LOGIN_REDIRECT_URL", "/portal/")
+        next_url = (
+            request.POST.get("next")
+            or request.GET.get("next")
+            or getattr(settings, "LOGIN_REDIRECT_URL", "/portal/")
+        )
         if not form.is_valid():
             messages.error(request, "Please fill in both fields.")
-            return render(request, self.template_name, {"form": form, "next": next_url})
+            return render(
+                request, self.template_name, {"form": form, "next": next_url}
+            )
 
         identifier = form.cleaned_data["identifier"].strip()
         password = form.cleaned_data["password"]
@@ -55,25 +76,38 @@ class PortalLoginView(TemplateView):
         if user is None:
             try:
                 from apps.patients.models import Patient
-                pat = Patient.objects.filter(phone__iexact=identifier).select_related("user").first()
+
+                pat = (
+                    Patient.objects.filter(phone__iexact=identifier)
+                    .select_related("user")
+                    .first()
+                )
                 user = getattr(pat, "user", None)
             except Exception:
                 user = None
 
         if not user:
             messages.error(request, "Invalid credentials.")
-            return render(request, self.template_name, {"form": form, "next": next_url})
+            return render(
+                request, self.template_name, {"form": form, "next": next_url}
+            )
 
-        auth_user = authenticate(request, username=user.username, password=password)
+        auth_user = authenticate(
+            request, username=user.username, password=password
+        )
         if not auth_user:
             messages.error(request, "Invalid credentials.")
-            return render(request, self.template_name, {"form": form, "next": next_url})
+            return render(
+                request, self.template_name, {"form": form, "next": next_url}
+            )
 
         login(request, auth_user)
         if not remember:
             request.session.set_expiry(0)  # expire at browser close
 
-        if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        if not url_has_allowed_host_and_scheme(
+            next_url, allowed_hosts={request.get_host()}
+        ):
             next_url = getattr(settings, "LOGIN_REDIRECT_URL", "/portal/")
         messages.success(request, "Welcome back 👋")
         return redirect(next_url)
@@ -106,7 +140,9 @@ class AcceptInviteView(FormView):
     def dispatch(self, request, *args, **kwargs):
         self.invite = get_object_or_404(Invite, token=kwargs["token"])
         if not self.invite.is_valid:
-            return JsonResponse({"detail": "Invite expired or already used."}, status=400)
+            return JsonResponse(
+                {"detail": "Invite expired or already used."}, status=400
+            )
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -120,7 +156,13 @@ class AcceptInviteView(FormView):
             username=form.cleaned_data["username"],
             email=self.invite.email,
             password=form.cleaned_data["password1"],
-            **({"display_name": form.cleaned_data.get("display_name")} if "display_name" in User._meta.fields_map else {}),
+            **(
+                {
+                    "display_name": form.cleaned_data.get("display_name")
+                }
+                if "display_name" in User._meta.fields_map
+                else {}
+            ),
         )
         RoleBinding.objects.get_or_create(user=user, role=self.invite.role)
         self.invite.accepted_at = timezone.now()
@@ -145,7 +187,11 @@ class StaffLoginView(PortalLoginView):
         return render(
             request,
             self.template_name,
-            {"form": form, "next": request.GET.get("next", ""), "audience": self.audience or "staff"},
+            {
+                "form": form,
+                "next": request.GET.get("next", ""),
+                "audience": self.audience or "staff",
+            },
         )
 
     def post(self, request, *args, **kwargs):
@@ -157,12 +203,21 @@ class StaffLoginView(PortalLoginView):
         next_url = request.POST.get("next") or request.GET.get("next") or ""
         if not form.is_valid():
             messages.error(request, "Please fill in both fields.")
-            return render(request, self.template_name, {"form": form, "next": next_url, "audience": self.audience or "staff"})
+            return render(
+                request,
+                self.template_name,
+                {
+                    "form": form,
+                    "next": next_url,
+                    "audience": self.audience or "staff",
+                },
+            )
 
         identifier = form.cleaned_data["identifier"].strip()
         password = form.cleaned_data["password"]
         remember = form.cleaned_data.get("remember_me", True)
 
+        # Resolve identifier → user (email first, else phone via Patient link)
         User = get_user_model()
         user = None
         if "@" in identifier:
@@ -170,53 +225,81 @@ class StaffLoginView(PortalLoginView):
         if user is None:
             try:
                 from apps.patients.models import Patient
-                pat = Patient.objects.filter(phone__iexact=identifier).select_related("user").first()
+
+                pat = (
+                    Patient.objects.filter(phone__iexact=identifier)
+                    .select_related("user")
+                    .first()
+                )
                 user = getattr(pat, "user", None)
             except Exception:
                 user = None
 
         if not user:
             messages.error(request, "Invalid credentials.")
-            return render(request, self.template_name, {"form": form, "next": next_url, "audience": self.audience or "staff"})
+            return render(
+                request,
+                self.template_name,
+                {
+                    "form": form,
+                    "next": next_url,
+                    "audience": self.audience or "staff",
+                },
+            )
 
-        auth_user = authenticate(request, username=user.username, password=password)
+        auth_user = authenticate(
+            request, username=user.username, password=password
+        )
         if not auth_user:
             messages.error(request, "Invalid credentials.")
-            return render(request, self.template_name, {"form": form, "next": next_url, "audience": self.audience or "staff"})
+            return render(
+                request,
+                self.template_name,
+                {
+                    "form": form,
+                    "next": next_url,
+                    "audience": self.audience or "staff",
+                },
+            )
 
         login(request, auth_user)
         if not remember:
             request.session.set_expiry(0)
 
         # Safe next= (same-origin) and NOT pointing to the patient portal root
-        if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        if next_url and url_has_allowed_host_and_scheme(
+            next_url, allowed_hosts={request.get_host()}
+        ):
             if not next_url.rstrip("/").endswith("/portal"):
                 messages.success(request, "Welcome back 👋")
                 return redirect(next_url)
 
         # Choose a staff default destination
         if self.audience == "reception":
+            # Reception dashboard
             try:
                 url = reverse("reception:dashboard")
             except Exception:
                 url = "/reception/"
+
         elif self.audience == "clinician":
-            url = None
-            # Prefer existing, no-pk console endpoints
-            for name in (
-                "clinicians_ui:list",                    # /console/clinicians/
-                "appointments_ui:console_appointments",  # /console/appointments/
-                "patients_ui:list",                      # /console/patients/
-            ):
+            # Clinician: go straight to THEIR dashboard
+            # /console/clinicians/<user_id>/dashboard/
+            try:
+                url = reverse(
+                    "clinicians_ui:dashboard",
+                    kwargs={"pk": auth_user.pk},
+                )
+            except Exception:
+                # Fallbacks just in case
                 try:
-                    url = reverse(name)
-                    break
+                    url = reverse("clinicians_ui:list")
                 except Exception:
-                    continue
-            if not url:
-                url = "/console/clinicians/"  # safe hard fallback
+                    url = "/console/clinicians/"
+
         else:
-            url = "/console/clinicians/dashboard"  # generic staff fallback
+            # Generic staff fallback
+            url = "/console/clinicians/"
 
         messages.success(request, "Welcome back 👋")
         return redirect(url)

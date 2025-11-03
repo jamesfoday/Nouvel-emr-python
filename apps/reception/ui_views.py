@@ -686,3 +686,6 @@ def dm_send(request):
         m = _Msg(request.user, body)
 
     return TemplateResponse(request, "reception/partials/dm_message.html", {"m": m})
+
+
+

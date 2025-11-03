@@ -15,8 +15,13 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-          <a href="{% url 'patients_ui:patients_home' %}"
-             class="rounded-xl border border-gray-300 px-3 py-1.5 text-sm text-gray-800">Back to list</a>
+          {# Back button: use history.back(), fallback to clinician dashboard #}
+          {% url 'clinicians_ui:dashboard' request.user.pk as clinician_dashboard_url %}
+          <button type="button"
+                  class="rounded-xl border border-gray-300 px-3 py-1.5 text-sm text-gray-800"
+                  onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href='{{ clinician_dashboard_url|escapejs }}'; }">
+            Back
+          </button>
 
           <a href="{% url 'patients_ui:patients_edit' pk=p.id %}"
              class="rounded-xl bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white">Edit</a>
@@ -30,7 +35,6 @@
             </button>
           </form>
 
-          {# Was: if request.user.is_staff or request.user.is_superuser and p.email #}
           {% if request.user.is_staff or request.user.is_superuser %}
             {% if p.email %}
               <button type="button"
@@ -67,18 +71,17 @@
         </div>
 
         <div class="rounded-xl border p-4">
-       <h2 class="mb-3 font-semibold text-gray-800">Address</h2>
-       <div class="text-sm text-gray-700">
-       <div>{{ p.address_line|default:"—" }}</div>
-        <div>
-      {{ p.city|default:"" }}
-      {% if p.city and p.region or p.city and p.postal_code %}, {% endif %}
-      {{ p.region|default:"" }} {{ p.postal_code|default:"" }}
-    </div>
-    <div>{{ p.country|default:"" }}</div>
-  </div>
-</div>
-
+          <h2 class="mb-3 font-semibold text-gray-800">Address</h2>
+          <div class="text-sm text-gray-700">
+            <div>{{ p.address_line|default:"—" }}</div>
+            <div>
+              {{ p.city|default:"" }}
+              {% if p.city and p.region or p.city and p.postal_code %}, {% endif %}
+              {{ p.region|default:"" }} {{ p.postal_code|default:"" }}
+            </div>
+            <div>{{ p.country|default:"" }}</div>
+          </div>
+        </div>
       </div>
 
       {# ... other panels (appointments, encounters, docs) can go here ... #}

@@ -37,60 +37,56 @@
     {% endif %}
 
     <div class="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-6">
-      <form method="post" novalidate>
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{{ next|default:'' }}">
+   <form method="post" action="{% url 'login' %}" class="space-y-4">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next|default:'' }}">
+      <input type="hidden" name="audience" id="login-audience" value="auto">
 
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700">Email or phone</label>
-          <input type="text" name="identifier" value="{{ form.identifier.value|default:'' }}" required
-                 autocomplete="username"
-                 class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                 placeholder="you@example.com or +1 555 123 4567" />
-          {% if form.identifier.errors %}
-            <p class="mt-1 text-sm text-rose-600">{{ form.identifier.errors|striptags }}</p>
-          {% endif %}
+      <div>
+        <label for="id_username" class="block text-sm font-medium text-emerald-900 mb-1">Email</label>
+        <input type="text" name="username" id="id_username"
+              class="w-full px-3 py-2 border rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+              required>
+      </div>
+
+      <div>
+        <label for="id_password" class="block text-sm font-medium text-emerald-900 mb-1">Password</label>
+        <input type="password" name="password" id="id_password"
+              class="w-full px-3 py-2 border rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+              required>
+      </div>
+
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <input type="checkbox" name="remember" id="id_remember">
+          <label for="id_remember" class="text-sm text-emerald-900/80">Remember me</label>
         </div>
+        <a href="{% url 'password_reset' %}" class="text-sm text-emerald-700 hover:underline">
+          Forgot password?
+        </a>
+      </div>
 
-        <div class="mb-4">
-          <div class="flex items-center justify-between">
-            <label class="block text-sm font-medium text-gray-700">Password</label>
-            <a href="{% url 'password_reset' %}" class="text-sm text-emerald-700 hover:underline">Forgot?</a>
-          </div>
-          <input type="password" name="password" autocomplete="current-password" required
-                 class="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                 placeholder="••••••••" />
-          {% if form.password.errors %}
-            <p class="mt-1 text-sm text-rose-600">{{ form.password.errors|striptags }}</p>
-          {% endif %}
-        </div>
+      <button type="submit"
+              class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition active:scale-[.98]">
+        Sign In
+      </button>
+</form>
 
-        <div class="mb-5">
-          <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" name="remember_me"
-                   {% if form.remember_me.value %}checked{% endif %}
-                   class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
-            Remember me
-          </label>
-        </div>
 
-        {% if form.non_field_errors %}
-          <div class="mb-4 rounded-xl bg-rose-50 text-rose-700 px-4 py-3 text-sm">
-            {{ form.non_field_errors|striptags }}
-          </div>
-        {% endif %}
-
-        <button type="submit"
-                class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-sm font-semibold shadow-sm">
-          Sign in
-        </button>
-      </form>
-
-      <div class="mt-4 text-center text-sm text-gray-600">
+    <div class="mt-4 text-center text-sm text-gray-600">
         Don’t have an account?
         <a href="/portal/signup/" class="text-emerald-700 hover:underline">Create one</a>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+  
+  document.querySelectorAll('[data-login-role]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      document.getElementById('login-audience').value = e.target.dataset.loginRole;
+    });
+  });
+</script>
 {% endblock %}
