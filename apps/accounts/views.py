@@ -52,27 +52,39 @@ class PortalLoginView(TemplateView):
         )
 
     def post(self, request, *args, **kwargs):
-        form = PortalLoginForm(request.POST or None)
+        # Where to send the user after login
         next_url = (
             request.POST.get("next")
             or request.GET.get("next")
             or getattr(settings, "LOGIN_REDIRECT_URL", "/portal/")
         )
-        if not form.is_valid():
+
+        # Pull the raw values from POST
+        identifier = (request.POST.get("identifier") or "").strip()
+        password = request.POST.get("password") or ""
+        remember = request.POST.get("remember_me") in ("on", "true", "1")
+
+        # Bind a form so values are re-rendered back into the template
+        form = PortalLoginForm(
+            {
+                "identifier": identifier,
+                "password": password,
+                "remember_me": remember,
+            }
+        )
+
+        # 1) Both fields must be non-empty
+        if not identifier or not password:
             messages.error(request, "Please fill in both fields.")
-            return render(
-                request, self.template_name, {"form": form, "next": next_url}
-            )
+            return render(request, self.template_name, {"form": form, "next": next_url})
 
-        identifier = form.cleaned_data["identifier"].strip()
-        password = form.cleaned_data["password"]
-        remember = form.cleaned_data.get("remember_me", True)
-
-        # Resolve identifier → user (email first, else phone via Patient link)
+        # 2) Resolve identifier → user (email first, then phone via Patient link)
         User = get_user_model()
         user = None
+
         if "@" in identifier:
             user = User.objects.filter(email__iexact=identifier).first()
+
         if user is None:
             try:
                 from apps.patients.models import Patient
@@ -88,19 +100,16 @@ class PortalLoginView(TemplateView):
 
         if not user:
             messages.error(request, "Invalid credentials.")
-            return render(
-                request, self.template_name, {"form": form, "next": next_url}
-            )
+            return render(request, self.template_name, {"form": form, "next": next_url})
 
         auth_user = authenticate(
             request, username=user.username, password=password
         )
         if not auth_user:
             messages.error(request, "Invalid credentials.")
-            return render(
-                request, self.template_name, {"form": form, "next": next_url}
-            )
+            return render(request, self.template_name, {"form": form, "next": next_url})
 
+        # 3) Successful login
         login(request, auth_user)
         if not remember:
             request.session.set_expiry(0)  # expire at browser close
@@ -108,8 +117,8 @@ class PortalLoginView(TemplateView):
         if not url_has_allowed_host_and_scheme(
             next_url, allowed_hosts={request.get_host()}
         ):
-            next_url = getattr(settings, "LOGIN_REDIRECT_URL", "/portal/")
-        messages.success(request, "Welcome back 👋")
+            next_url = "/portal/"
+
         return redirect(next_url)
 
 
