@@ -1015,8 +1015,8 @@ def rx_view_modal(request, pk: int, rx_id: int):
     rx = _get_rx_for_clinician_or_404(pk, rx_id)
 
     html = loader.render_to_string(
-        "clinicians/console/prescriptions/_view_modal.html",   # <-- fixed path
-        {"clinician": clinician, "rx": rx},
+       "clinicians/prescriptions/_view_modal.html",
+         {"clinician": clinician, "rx": rx},
         request,
     )
     return HttpResponse(html)
@@ -1246,8 +1246,8 @@ def rx_edit(request, pk: int, rx_id: int):
     patients = Patient.objects.filter(is_active=True).order_by("family_name", "given_name")  # <-- fixed fields
     return render(
         request,
-        "clinicians/console/prescriptions/_edit_modal.html",
-        {"clinician": clinician, "rx": rx, "patients": patients},
+        "clinicians/prescriptions/_edit_modal.html",
+       {"clinician": clinician, "rx": rx, "patients": patients},
     )
 
     # --- RX PDF generator (same look as portal) ---

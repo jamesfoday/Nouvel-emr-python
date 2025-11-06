@@ -708,10 +708,13 @@ def book_appt_slots(request):
 
 @login_required
 @require_POST
+@login_required
+@require_POST
 def book_appt_create(request):
     from datetime import datetime
     from django.utils import timezone
 
+    # Resolve patient
     patient = _current_patient_for_user(request.user)
     if not patient:
         return HttpResponseBadRequest("No patient profile linked to your account.")
@@ -719,6 +722,7 @@ def book_appt_create(request):
     clinician_id = request.POST.get("clinician_id")
     start_iso = (request.POST.get("start_iso") or "").strip()
     duration = int(request.POST.get("duration") or 30)
+
     if not clinician_id or not start_iso:
         return HttpResponseBadRequest("Missing fields")
 
@@ -733,13 +737,57 @@ def book_appt_create(request):
 
     clinician = get_object_or_404(User, pk=requested_id, is_staff=True, is_active=True)
 
-    # robust ISO parsing (aware/naive/'Z')
+    # Robust ISO parsing (aware/naive/'Z')
     try:
         dt = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
     except ValueError:
         return HttpResponseBadRequest("Invalid start time")
+
     start = dt if dt.tzinfo else timezone.make_aware(dt)
     start = start.astimezone(timezone.get_current_timezone())
+
+    # If appointments app is missing, bail early
+    if Appointment is None:
+        return HttpResponseBadRequest("Appointments module not installed.")
+
+    # Build create kwargs defensively, only setting fields that exist
+    try:
+        appt_fields = {f.name for f in Appointment._meta.get_fields()}
+    except Exception:
+        appt_fields = set()
+
+    appt_kwargs = {}
+    if "patient" in appt_fields:
+        appt_kwargs["patient"] = patient
+    if "clinician" in appt_fields:
+        appt_kwargs["clinician"] = clinician
+    if "start" in appt_fields:
+        appt_kwargs["start"] = start
+    if "end" in appt_fields:
+        appt_kwargs["end"] = start + timedelta(minutes=duration)
+    if "duration_minutes" in appt_fields:
+        appt_kwargs["duration_minutes"] = duration
+    if "created_by" in appt_fields:
+        appt_kwargs["created_by"] = request.user
+
+    # Let the model defaults handle status/other fields
+    appt = Appointment.objects.create(**appt_kwargs)
+
+    # HTMX request: return a small success fragment
+    if request.headers.get("HX-Request"):
+        html = render_to_string(
+            "portal/consultations/_book_success.html",
+            {"appointment": appt},
+            request=request,
+        )
+        resp = HttpResponse(html)
+        # Optional: trigger a panel refresh on the dashboard
+        resp["HX-Trigger"] = '{"appts-refresh": true}'
+        return resp
+
+    # Normal POST: redirect to the appointments list
+    messages.success(request, "Appointment booked.")
+    return redirect("portal_ui:appts_list")
 
    
 

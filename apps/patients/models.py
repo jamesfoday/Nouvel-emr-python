@@ -117,6 +117,34 @@ class Patient(models.Model):
         """Compatibility with templates calling user.get_full_name()."""
         return self.full_name
 
+    
+    def save(self, *args, **kwargs):
+        """
+        Normalize string fields so we never try to save NULL into
+        NOT NULL CharFields. This lets the views keep using 'or None'
+        without breaking the DB constraints.
+        """
+        string_fields = [
+            "email",
+            "phone",
+            "sex",
+            "address_line",
+            "city",
+            "region",
+            "postal_code",
+            "country",
+        ]
+
+        for field_name in string_fields:
+            # Only touch attributes that actually exist on the model
+            if hasattr(self, field_name):
+                value = getattr(self, field_name)
+                if value is None:
+                    setattr(self, field_name, "")
+
+        super().save(*args, **kwargs)
+
+     
     # Back-compat aliases if some code expects first_name/last_name
     @property
     def first_name(self) -> str:

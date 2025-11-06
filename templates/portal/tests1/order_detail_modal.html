@@ -1,0 +1,37 @@
+<div class="fixed inset-0 z-50">
+  <!-- backdrop -->
+  <div class="absolute inset-0 bg-black/30" 
+       hx-get="this.remove()" onclick="document.getElementById('modal-root').innerHTML='';"></div>
+
+  <!-- modal card -->
+  <div class="absolute inset-0 grid place-items-center p-4">
+    <div class="w-full max-w-lg rounded-2xl border border-white/30 bg-white/95 shadow-2xl backdrop-blur p-5">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-gray-900">Lab Order Details</h2>
+        <button class="rounded-lg bg-gray-900/90 px-2 py-1 text-xs font-semibold text-white"
+                onclick="document.getElementById('modal-root').innerHTML=''">
+          Close
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-2 text-sm text-gray-800">
+        <div><span class="font-medium">Test:</span> {{ o.catalog.name }} ({{ o.catalog.code }})</div>
+        <div><span class="font-medium">Status:</span> {{ o.status|title }}</div>
+        <div><span class="font-medium">Priority:</span> {{ o.priority|title }}</div>
+        <div><span class="font-medium">Ordered at:</span> {{ o.ordered_at|date:"D, M j Y · H:i" }}</div>
+        {% if o.clinician %}
+          <div><span class="font-medium">Clinician:</span> {{ o.clinician.get_full_name|default:o.clinician }}</div>
+        {% endif %}
+        {% if o.reason %}<div><span class="font-medium">Reason:</span> {{ o.reason }}</div>{% endif %}
+        {% if o.notes %}<div><span class="font-medium">Notes:</span> {{ o.notes }}</div>{% endif %}
+      </div>
+
+      <div class="mt-5 flex items-center justify-end">
+        <button class="rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:brightness-95"
+                onclick="document.getElementById('modal-root').innerHTML=''">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

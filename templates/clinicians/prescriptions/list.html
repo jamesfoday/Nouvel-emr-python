@@ -32,7 +32,9 @@
           <input name="q" value="{{ q }}" placeholder="Search prescriptions"
                  class="w-full bg-transparent outline-none text-gray-700"/>
           <button class="text-gray-600 cursor-pointer" aria-label="Search">
-            <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M12.9 14.32a7 7 0 1 1 1.414-1.414l3.39 3.39a1 1 0 0 1-1.414 1.415l-3.39-3.39ZM14 9a5 5 0 1 0-10 0 5 5 0 0 0 10 0Z"/></svg>
+            <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M12.9 14.32a7 7 0 1 1 1.414-1.414l3.39 3.39a1 1 0 0 1-1.414 1.415l-3.39-3.39ZM14 9a5 5 0 1 0-10 0 5 5 0 0 0 10 0Z"/>
+            </svg>
           </button>
         </div>
       </form>
@@ -48,8 +50,6 @@
             <li>
               <article class="group rounded-3xl border border-white/30 bg-white/60 p-4 sm:p-5 shadow-xl transition backdrop-blur hover:shadow-2xl">
                 <div class="flex items-center gap-4">
-                 
-
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center justify-between gap-3">
                       <h2 class="truncate text-[15px] sm:text-base font-semibold text-gray-900">{{ title }}</h2>
@@ -62,15 +62,23 @@
                     </div>
 
                     <div class="mt-1 text-sm text-gray-600 truncate">
-                      {% if rx.patient %}<span class="font-medium text-gray-700">{{ rx.patient.full_name|default:rx.patient }}</span> · {% endif %}
-                      {% if rx.created_at %}{{ rx.created_at|date:"D, M j Y" }} · {{ rx.created_at|time:"H:i" }}{% endif %}
+                      {% if rx.patient %}
+                        <span class="font-medium text-gray-700">
+                          {{ rx.patient.full_name|default:rx.patient }}
+                        </span>
+                        ·
+                      {% endif %}
+                      {% if rx.created_at %}
+                        {{ rx.created_at|date:"D, M j Y" }} · {{ rx.created_at|time:"H:i" }}
+                      {% endif %}
                     </div>
 
                     <div class="mt-3 flex flex-wrap items-center gap-2">
                       <!-- View (modal) -->
                       <button
                         hx-get="{% url 'clinicians_ui:rx_view_modal' clinician.pk rx.id %}"
-                        hx-target="#modal-root" hx-swap="innerHTML"
+                        hx-target="body"
+                        hx-swap="beforeend"
                         class="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow hover:brightness-95 active:brightness-90 cursor-pointer">
                         View
                       </button>
@@ -78,7 +86,8 @@
                       <!-- Edit (modal) -->
                       <button
                         hx-get="{% url 'clinicians_ui:rx_edit' clinician.pk rx.id %}"
-                        hx-target="#modal-root" hx-swap="innerHTML"
+                        hx-target="body"
+                        hx-swap="beforeend"
                         class="inline-flex items-center gap-2 rounded-2xl bg-white px-3 py-1.5 text-xs font-semibold text-gray-900 border border-gray-200 hover:bg-gray-50 cursor-pointer">
                         Edit
                       </button>
@@ -89,10 +98,10 @@
                         Download
                       </a>
 
-                    
-
                       <!-- Delete -->
-                      <form method="post" action="{% url 'prescriptions_ui:delete' clinician.pk rx.pk %}" onsubmit="return confirm('Delete this prescription?')">
+                      <form method="post"
+                            action="{% url 'prescriptions_ui:delete' clinician.pk rx.pk %}"
+                            onsubmit="return confirm('Delete this prescription?')">
                         {% csrf_token %}
                         <button class="inline-flex items-center gap-2 rounded-2xl bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow hover:brightness-95 cursor-pointer">
                           Delete
@@ -121,47 +130,4 @@
   </div>
 </div>
 
-<!-- Modal host (overlay + panel injected by HTMX responses) -->
-<div id="modal-root" class="fixed inset-0 z-50 hidden"></div>
-
-<script>
-  // Show modal (unhide container) once HTMX swaps in content
-  document.addEventListener('htmx:afterSwap', function (e) {
-    if (e.detail && e.detail.target && e.detail.target.id === 'modal-root') {
-      e.detail.target.classList.remove('hidden');
-    }
-  });
-
-  // Close helper the modal snippets can call
-  function closeModalRoot() {
-    const host = document.getElementById('modal-root');
-    host.classList.add('hidden');
-    host.innerHTML = '';
-  }
-
-  // Share: copy a per-RX link returned by your share endpoint
-  async function copyRxLink(btn, id) {
-    try {
-      const url = "{% url 'clinicians_ui:rx_share' clinician.pk 0 %}".replace('/0/', `/${id}/`);
-      const resp = await fetch(url, {headers: {'X-Requested-With':'XMLHttpRequest'}});
-      const data = await resp.json();
-      if (data.ok && data.url) {
-        await navigator.clipboard.writeText(data.url);
-        btn.textContent = 'Copied';
-        setTimeout(() => btn.textContent = 'Share', 1200);
-      } else {
-        btn.textContent = 'Failed';
-        setTimeout(() => btn.textContent = 'Share', 1200);
-      }
-    } catch (e) {
-      btn.textContent = 'Error';
-      setTimeout(() => btn.textContent = 'Share', 1200);
-    }
-  }
-
-  // ESC to close modal
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeModalRoot();
-  });
-</script>
 {% endblock %}

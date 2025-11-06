@@ -87,6 +87,8 @@ urlpatterns = [
     path("inquiry/", include("apps.inquiry.urls")),
     path("bugs/", include("apps.bugtracker.urls")),
     path("", include("apps.menus.urls", namespace="menus")),
+    # path("accounts/", include("django.contrib.auth.urls")),
+    
 ]
 
 # Media files during development

@@ -10,19 +10,27 @@
           </h1>
           <p class="text-sm text-gray-500">Patient ID: {{ p.id }}</p>
           {% if p.user %}
-            <p class="text-sm text-gray-600">Username: <span class="font-medium">{{ p.user.username }}</span></p>
+            <p class="text-sm text-gray-600">
+              Username: <span class="font-medium">{{ p.user.username }}</span>
+            </p>
           {% endif %}
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
           <a href="{% url 'patients_ui:patients_home' %}"
-             class="rounded-xl border border-gray-300 px-3 py-1.5 text-sm text-gray-800">Back to list</a>
+             class="rounded-xl border border-gray-300 px-3 py-1.5 text-sm text-gray-800">
+            Back to list
+          </a>
 
           <a href="{% url 'patients_ui:patients_edit' pk=p.id %}"
-             class="rounded-xl bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white">Edit</a>
+             class="rounded-xl bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white">
+            Edit
+          </a>
 
-          <form method="post" action="{% url 'patients_ui:patients_deactivate' pk=p.id %}"
-                onsubmit="return confirm('Deactivate this patient?');" class="inline">
+          <form method="post"
+                action="{% url 'patients_ui:patients_deactivate' pk=p.id %}"
+                onsubmit="return confirm('Deactivate this patient?');"
+                class="inline">
             {% csrf_token %}
             <button type="submit"
                     class="rounded-xl bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white">
@@ -30,7 +38,6 @@
             </button>
           </form>
 
-          {# Was: if request.user.is_staff or request.user.is_superuser and p.email #}
           {% if request.user.is_staff or request.user.is_superuser %}
             {% if p.email %}
               <button type="button"
@@ -47,6 +54,10 @@
                   Copy
                 </button>
               </div>
+            {% else %}
+              <span class="text-xs text-gray-500 italic">
+                No email on file for login link
+              </span>
             {% endif %}
           {% endif %}
         </div>
@@ -56,32 +67,47 @@
         <div class="rounded-xl border p-4">
           <h2 class="mb-3 font-semibold text-gray-800">Demographics</h2>
           <dl class="grid grid-cols-3 gap-y-2 text-sm">
-            <dt class="text-gray-500">Given</dt><dd class="col-span-2">{{ p.given_name|default:"—" }}</dd>
-            <dt class="text-gray-500">Family</dt><dd class="col-span-2">{{ p.family_name|default:"—" }}</dd>
+            <dt class="text-gray-500">Given</dt>
+            <dd class="col-span-2">{{ p.given_name|default:"—" }}</dd>
+
+            <dt class="text-gray-500">Family</dt>
+            <dd class="col-span-2">{{ p.family_name|default:"—" }}</dd>
+
             <dt class="text-gray-500">DOB</dt>
-            <dd class="col-span-2">{% if p.date_of_birth %}{{ p.date_of_birth|date:"Y-m-d" }}{% else %}—{% endif %}</dd>
-            <dt class="text-gray-500">Sex</dt><dd class="col-span-2">{{ p.sex|default:"—" }}</dd>
-            <dt class="text-gray-500">Email</dt><dd class="col-span-2">{{ p.email|default:"—" }}</dd>
-            <dt class="text-gray-500">Phone</dt><dd class="col-span-2">{{ p.phone|default:"—" }}</dd>
+            <dd class="col-span-2">
+              {% if p.date_of_birth %}
+                {{ p.date_of_birth|date:"Y-m-d" }}
+              {% else %}
+                —
+              {% endif %}
+            </dd>
+
+            <dt class="text-gray-500">Sex</dt>
+            <dd class="col-span-2">{{ p.sex|default:"—" }}</dd>
+
+            <dt class="text-gray-500">Email</dt>
+            <dd class="col-span-2">{{ p.email|default:"—" }}</dd>
+
+            <dt class="text-gray-500">Phone</dt>
+            <dd class="col-span-2">{{ p.phone|default:"—" }}</dd>
           </dl>
         </div>
 
         <div class="rounded-xl border p-4">
-       <h2 class="mb-3 font-semibold text-gray-800">Address</h2>
-       <div class="text-sm text-gray-700">
-       <div>{{ p.address_line|default:"—" }}</div>
-        <div>
-      {{ p.city|default:"" }}
-      {% if p.city and p.region or p.city and p.postal_code %}, {% endif %}
-      {{ p.region|default:"" }} {{ p.postal_code|default:"" }}
-    </div>
-    <div>{{ p.country|default:"" }}</div>
-  </div>
-</div>
-
+          <h2 class="mb-3 font-semibold text-gray-800">Address</h2>
+          <div class="text-sm text-gray-700">
+            <div>{{ p.address_line|default:"—" }}</div>
+            <div>
+              {{ p.city|default:"" }}
+              {% if p.city and p.region or p.city and p.postal_code %}, {% endif %}
+              {{ p.region|default:"" }} {{ p.postal_code|default:"" }}
+            </div>
+            <div>{{ p.country|default:"" }}</div>
+          </div>
+        </div>
       </div>
 
-      {# ... other panels (appointments, encounters, docs) can go here ... #}
+      {# other panels (appointments, encounters, docs, etc.) go here #}
     </div>
   </div>
 </div>
@@ -94,15 +120,38 @@
     const input  = pop?.querySelector("input");
     const copyBt = pop?.querySelector(".copy-link-btn");
 
+    if (!btn) return;
+
     const original = btn.textContent;
     btn.disabled = true;
     btn.textContent = "Generating…";
 
     try {
-      const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
-      if (!resp.ok) throw new Error(await resp.text() || `HTTP ${resp.status}`);
-      const data = await resp.json();
+      const resp = await fetch(url, {
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json"
+        }
+      });
 
+      let data = {};
+      try {
+        data = await resp.json();
+      } catch (_) {
+        data = {};
+      }
+
+      if (!resp.ok || data.ok === false || !data.link) {
+        const message =
+          (data && data.error) ||
+          "Could not generate login link. Ensure the patient has an email and the portal is configured.";
+        alert(message);
+        btn.textContent = original;
+        btn.disabled = false;
+        return;
+      }
+
+      // Success: we have data.link
       if (input) {
         input.value = data.link || "";
         pop.classList.remove("hidden");
@@ -112,23 +161,28 @@
       }
 
       btn.textContent = "Link ready";
-      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1600);
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.disabled = false;
+      }, 1600);
 
-      copyBt?.addEventListener("click", async () => {
-        if (!input?.value) return;
-        try {
-          await navigator.clipboard.writeText(input.value);
-          copyBt.textContent = "Copied";
-          setTimeout(() => (copyBt.textContent = "Copy"), 1200);
-        } catch (_) {
-          input.select();
-          document.execCommand("copy");
-        }
-      }, { once: true });
+      if (copyBt) {
+        copyBt.addEventListener("click", async () => {
+          if (!input?.value) return;
+          try {
+            await navigator.clipboard.writeText(input.value);
+            copyBt.textContent = "Copied";
+            setTimeout(() => (copyBt.textContent = "Copy"), 1200);
+          } catch (_) {
+            input.select();
+            document.execCommand("copy");
+          }
+        }, { once: true });
+      }
 
     } catch (e) {
       console.error(e);
-      alert("Could not generate login link. Ensure the patient has an email.");
+      alert("Could not generate login link (network error).");
       btn.textContent = original;
       btn.disabled = false;
     }

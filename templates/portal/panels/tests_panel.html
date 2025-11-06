@@ -20,11 +20,12 @@
         Reports
       </button>
     </div>
-<!-- 
+    <!-- {# Optional "See all" link
     <a href="{% url 'portal_ui:tests_list' %}"
        class="shrink-0 inline-flex items-center rounded-full bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-200">
       See all
-    </a> -->
+    </a>
+    #} -->
   </div>
 
   {% if tab == 'reports' %}
@@ -33,18 +34,26 @@
         {% for r in reports %}
           <div class="rounded-lg border border-gray-200 p-3 flex items-center justify-between gap-3">
             <div class="min-w-0">
-              <div class="font-medium text-gray-900 truncate">{{ r.performing_lab|default:"Diagnostic Report" }}</div>
-              <div class="text-xs text-gray-500">{{ r.issued_at|date:"M j, Y" }} · {{ r.status|title }}</div>
+              <div class="font-medium text-gray-900 truncate">
+                {{ r.performing_lab|default:"Diagnostic Report" }}
+              </div>
+              <div class="text-xs text-gray-500">
+                {{ r.issued_at|date:"M j, Y" }} · {{ r.status|title }}
+              </div>
             </div>
             <div class="shrink-0 flex items-center gap-2">
               {% if r.pdf %}
-                <a href="{{ r.pdf.url }}" target="_blank" class="text-emerald-700 text-sm underline">Download</a>
+                <a href="{{ r.pdf.url }}" target="_blank"
+                   class="text-emerald-700 text-sm underline">
+                  Download
+                </a>
               {% endif %}
               <button
+                type="button"
                 class="rounded-xl bg-gray-900/90 px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95"
                 hx-get="{% url 'portal_ui:tests_report_detail' r.id %}"
-                hx-target="#modal-root"
-                hx-swap="innerHTML">
+                hx-target="body"
+                hx-swap="beforeend">
                 View
               </button>
             </div>
@@ -68,15 +77,18 @@
                   {{ o.ordered_at|date:"M j, Y" }} · {{ o.priority|title }} · {{ o.status|title }}
                 </div>
                 {% if o.reason %}
-                  <div class="text-xs text-gray-500 mt-1 truncate">{{ o.reason }}</div>
+                  <div class="text-xs text-gray-500 mt-1 truncate">
+                    {{ o.reason }}
+                  </div>
                 {% endif %}
               </div>
 
               <button
+                type="button"
                 class="shrink-0 rounded-xl bg-gray-900/90 px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95"
                 hx-get="{% url 'portal_ui:tests_order_detail' o.id %}"
-                hx-target="#modal-root"
-                hx-swap="innerHTML">
+                hx-target="body"
+                hx-swap="beforeend">
                 View
               </button>
             </div>

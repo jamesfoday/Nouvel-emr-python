@@ -65,12 +65,12 @@
           </div>
         </div>
 
-        <div id="upcoming-body"
-             class="flex-1"
+        <div id="upcoming-body "
+             class="flex-1 "
              hx-get="{% url 'clinicians_ui:upcoming' clinician.pk %}"
              hx-trigger="load, every 30s"
              hx-swap="innerHTML">
-          <div class="text-gray-400 text-sm">Loading…</div>
+          <div class="text-gray-400 text-sm max-h-72 overflow-y-auto">Loading…</div>
         </div>
       </div>
     </div>

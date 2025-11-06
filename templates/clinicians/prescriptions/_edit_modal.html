@@ -1,0 +1,82 @@
+<div class="rx-modal-root fixed inset-0 z-50">
+  <!-- Modal Overlay -->
+  <div class="absolute inset-0 bg-black/40" onclick="closeRxModal(this)"></div>
+  
+  <!-- Modal Content -->
+  <div class="absolute inset-0 grid place-items-center p-4">
+    <div class="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Edit prescription</h2>
+        <button class="rounded p-1 hover:bg-gray-100" onclick="closeRxModal(this)">✕</button>
+      </div>
+
+      <!-- Prescription Edit Form -->
+      <form method="post"
+            class="mt-4 space-y-3"
+            action="{% url 'clinicians_ui:rx_edit' clinician.pk rx.id %}">
+        {% csrf_token %}
+
+        <!-- Title Field -->
+        <label class="block text-sm font-medium">Title</label>
+        <input
+          name="title"
+          value="{{ rx.title }}"
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+
+        <!-- Patient Select Dropdown -->
+        <label class="block text-sm font-medium">Patient</label>
+        <select
+          name="patient_id"
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        >
+          <option value="">— keep current —</option>
+          {% for p in patients %}
+            <option value="{{ p.id }}" {% if rx.patient_id == p.id %}selected{% endif %}>
+              {% if p.get_full_name %}{{ p.get_full_name }}{% else %}{{ p.given_name }} {{ p.family_name }}{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+
+        <!-- Body Field -->
+        <label class="block text-sm font-medium">Body</label>
+        <textarea
+          name="body"
+          rows="8"
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        >{{ rx.body|default_if_none:"" }}</textarea>
+
+        <!-- Modal Footer (Action Buttons) -->
+        <div class="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            class="rounded-lg px-3 py-2 hover:bg-gray-100"
+            onclick="closeRxModal(this)"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:brightness-95 active:brightness-90"
+          >
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function closeRxModal(el) {
+    var root = el.closest('.rx-modal-root');
+    if (root) root.remove();
+    document.body.classList.remove('overflow-hidden');
+  }
+
+  // lock scroll while modal is open
+  (function () {
+    document.body.classList.add('overflow-hidden');
+  })();
+</script>

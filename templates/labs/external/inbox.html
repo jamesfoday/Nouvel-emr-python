@@ -15,15 +15,20 @@
             <div class="min-w-0">
               <div class="font-medium text-gray-900 truncate">{{ er.title|default:"External result" }}</div>
               <div class="text-sm text-gray-600">
-                {{ er.patient.get_full_name|default:er.patient }} · {{ er.vendor_name|default:"External" }}
-                {% if er.performed_at %} · {{ er.performed_at|date:"M j, Y" }}{% endif %} · {{ er.status|title }}
+                {{ er.patient.get_full_name|default:er.patient }}
+                · {{ er.vendor_name|default:"External" }}
+                {% if er.performed_at %} · {{ er.performed_at|date:"M j, Y" }}{% endif %}
+                · {{ er.status|title }}
               </div>
             </div>
+
+            {# FIXED BUTTON  #}
             <button
+              type="button"
               class="rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:brightness-95"
-              hx-get="{% url 'labs_ui:external_result_review' clinician.pk er.id %}"
-              hx-target="#modal-root"
-              hx-swap="innerHTML">
+              hx-get="{% url 'labs_ui:external_result_review' clinician.pk er.pk %}"
+              hx-target="body"
+              hx-swap="beforeend">
               Review
             </button>
           </li>

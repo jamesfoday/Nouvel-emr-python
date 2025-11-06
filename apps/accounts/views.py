@@ -41,7 +41,23 @@ class PortalLoginForm(forms.Form):
 
 
 class PortalLoginView(TemplateView):
+    """
+    Patient-facing login:
+
+      - Identifier may be email OR phone.
+      - Always redirects into the portal, never to the staff console.
+    """
     template_name = "portal/login.html"
+
+    def _portal_default_url(self):
+        """
+        Where a portal user should land by default.
+        We try to reverse 'portal_ui:home' and fall back to /portal/.
+        """
+        try:
+            return reverse("portal_ui:home")
+        except Exception:
+            return "/portal/"
 
     def get(self, request, *args, **kwargs):
         form = PortalLoginForm(initial={"remember_me": True})
@@ -53,10 +69,11 @@ class PortalLoginView(TemplateView):
 
     def post(self, request, *args, **kwargs):
         # Where to send the user after login
+        default_next = self._portal_default_url()
         next_url = (
             request.POST.get("next")
             or request.GET.get("next")
-            or getattr(settings, "LOGIN_REDIRECT_URL", "/portal/")
+            or default_next
         )
 
         # Pull the raw values from POST
@@ -76,7 +93,11 @@ class PortalLoginView(TemplateView):
         # 1) Both fields must be non-empty
         if not identifier or not password:
             messages.error(request, "Please fill in both fields.")
-            return render(request, self.template_name, {"form": form, "next": next_url})
+            return render(
+                request,
+                self.template_name,
+                {"form": form, "next": next_url},
+            )
 
         # 2) Resolve identifier → user (email first, then phone via Patient link)
         User = get_user_model()
@@ -100,24 +121,37 @@ class PortalLoginView(TemplateView):
 
         if not user:
             messages.error(request, "Invalid credentials.")
-            return render(request, self.template_name, {"form": form, "next": next_url})
+            return render(
+                request,
+                self.template_name,
+                {"form": form, "next": next_url},
+            )
 
         auth_user = authenticate(
             request, username=user.username, password=password
         )
         if not auth_user:
             messages.error(request, "Invalid credentials.")
-            return render(request, self.template_name, {"form": form, "next": next_url})
+            return render(
+                request,
+                self.template_name,
+                {"form": form, "next": next_url},
+            )
 
         # 3) Successful login
         login(request, auth_user)
         if not remember:
             request.session.set_expiry(0)  # expire at browser close
 
+        # Ensure next_url is safe and NOT pointing at the staff console for non-staff users
         if not url_has_allowed_host_and_scheme(
             next_url, allowed_hosts={request.get_host()}
         ):
-            next_url = "/portal/"
+            next_url = default_next
+
+        # Extra guard: patients (non-staff) should never be sent into /console/...
+        if not getattr(auth_user, "is_staff", False) and next_url.startswith("/console/"):
+            next_url = default_next
 
         return redirect(next_url)
 
@@ -205,7 +239,7 @@ class StaffLoginView(PortalLoginView):
 
     def post(self, request, *args, **kwargs):
         """
-        Copy of PortalLoginView.post, but picks a staff destination instead of /portal/.
+        Copy of PortalLoginView.post, but picks a staff destination instead of the portal.
         """
         form = PortalLoginForm(request.POST or None)
         # Read next but don't default to portal; we'll compute a staff default below.

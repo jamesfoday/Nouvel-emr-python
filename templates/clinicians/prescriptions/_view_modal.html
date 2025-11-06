@@ -1,0 +1,73 @@
+<div class="rx-modal-root fixed inset-0 z-50">
+  <!-- Modal Overlay -->
+  <div class="absolute inset-0 bg-black/40" onclick="closeRxModal(this)"></div>
+  
+  <!-- Modal Content -->
+  <div class="absolute inset-0 grid place-items-center p-4">
+    <div class="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-xl">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold">
+          {{ rx.title|default:"Prescription" }}
+        </h2>
+        <button class="rounded p-1 hover:bg-gray-100" onclick="closeRxModal(this)">✕</button>
+      </div>
+
+      <!-- Prescription Details -->
+      <p class="mt-1 text-sm text-gray-600">
+        {% if rx.created_at %}
+          {{ rx.created_at|date:"D, M j Y" }} · {{ rx.created_at|time:"H:i" }}
+        {% endif %}
+        {% if rx.clinician %}
+          · Dr {{ rx.clinician.get_full_name|default:rx.clinician.username }}
+        {% endif %}
+        {% if rx.patient %}
+          · for {{ rx.patient.get_full_name|default:rx.patient.given_name }} {{ rx.patient.family_name }}
+        {% endif %}
+      </p>
+
+      <!-- Prescription Body -->
+      <hr class="my-4 border-gray-200">
+      <pre class="whitespace-pre-wrap text-sm text-gray-800">
+{{ rx.body|default_if_none:"" }}
+      </pre>
+
+      <!-- Modal Footer (Action Buttons) -->
+      <div class="mt-5 flex justify-end gap-2">
+        <!-- Download Button -->
+        <a href="{% url 'clinicians_ui:rx_download' clinician.pk rx.id %}"
+           class="rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white hover:brightness-95">
+          Download
+        </a>
+
+        <!-- Share Button -->
+        <a href="{% url 'clinicians_ui:rx_share' clinician.pk rx.id %}"
+           class="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">
+          Share
+        </a>
+
+        <!-- Edit Button (Triggers HTMX Load of edit modal) -->
+        <button
+          hx-get="{% url 'clinicians_ui:rx_edit' clinician.pk rx.id %}"
+          hx-target="body"
+          hx-swap="beforeend"
+          class="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:brightness-95">
+          Edit
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function closeRxModal(el) {
+    var root = el.closest('.rx-modal-root');
+    if (root) root.remove();
+    document.body.classList.remove('overflow-hidden');
+  }
+
+  // lock scroll while modal is open
+  (function () {
+    document.body.classList.add('overflow-hidden');
+  })();
+</script>

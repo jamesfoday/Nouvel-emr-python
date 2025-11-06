@@ -1,0 +1,61 @@
+{# templates/patients/_search_table.html #}
+{% load static %}
+
+<table class="min-w-full text-left text-sm">
+  <thead class="border-b border-slate-200 bg-slate-50">
+    <tr>
+      <th class="px-4 py-2 font-semibold text-slate-700 text-xs uppercase tracking-wide">Patient</th>
+      <th class="px-4 py-2 font-semibold text-slate-700 text-xs uppercase tracking-wide">External ID</th>
+      <th class="px-4 py-2 font-semibold text-slate-700 text-xs uppercase tracking-wide">Email</th>
+      <th class="px-4 py-2 font-semibold text-slate-700 text-xs uppercase tracking-wide">Phone</th>
+      <th class="px-4 py-2"></th>
+    </tr>
+  </thead>
+  <tbody class="divide-y divide-slate-100 bg-white">
+    {% for p in patients %}
+      <tr class="hover:bg-emerald-50/40">
+        <td class="px-4 py-2">
+          <div class="flex items-center gap-2">
+            <div class="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-xs font-semibold text-emerald-700">
+              {{ p.given_name|first|default:"?" }}{{ p.family_name|first|default:"" }}
+            </div>
+            <div>
+              <div class="text-sm font-medium text-slate-900">
+                {{ p.family_name }} {{ p.given_name }}
+              </div>
+              {% if p.date_of_birth %}
+                <div class="text-xs text-slate-500">
+                  DOB: {{ p.date_of_birth }}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </td>
+        <td class="px-4 py-2 text-xs text-slate-600">
+          {{ p.external_id|default:"—" }}
+        </td>
+        <td class="px-4 py-2 text-xs text-slate-600">
+          {{ p.email|default:"—" }}
+        </td>
+        <td class="px-4 py-2 text-xs text-slate-600">
+          {{ p.phone|default:"—" }}
+        </td>
+        <td class="px-4 py-2 text-right">
+        <a
+        href="{% url 'patients_ui:detail' p.pk %}"
+        class="inline-flex items-center rounded-full border border-emerald-600/30 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50"
+        >
+        View
+        </a>
+
+        </td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="5" class="px-4 py-6 text-center text-sm text-slate-500">
+          No patients found for this search.
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

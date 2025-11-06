@@ -35,44 +35,34 @@
               </div>
               <div class="shrink-0 flex items-center gap-2">
                 <a href="{{ er.file.url }}" target="_blank"
-                   class="rounded-xl bg-gray-100 px-3 py-1.5 text-xs sm:text-sm font-semibold text-gray-800 hover:bg-gray-200">
-                  Open
-                </a>
+                   class="rounded-xl bg-gray-100 px-3 py-1.5 text-xs sm:text-sm font-semibold text-gray-800 hover:bg-gray-200">Open</a>
 
-                {# EDIT → opens upload/edit modal #}
                 <button
-                  type="button"
                   class="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs sm:text-sm font-semibold text-white hover:brightness-95"
                   hx-get="{% url 'portal_ui:tests_my_uploads_edit' er.id %}"
-                  hx-target="body"
-                  hx-swap="beforeend">
+                  hx-target="#modal-root"
+                  hx-swap="innerHTML">
                   Edit
                 </button>
 
-                {# DELETE → opens confirm_delete_modal #}
                 <button
-                  type="button"
                   class="rounded-xl bg-red-600 px-3 py-1.5 text-xs sm:text-sm font-semibold text-white hover:brightness-95"
                   hx-get="{% url 'portal_ui:tests_my_uploads_delete' er.id %}"
-                  hx-target="body"
-                  hx-swap="beforeend">
+                  hx-target="#modal-root"
+                  hx-swap="innerHTML">
                   Delete
                 </button>
               </div>
             </div>
           </li>
         {% empty %}
-          <div class="px-4 py-14 text-center text-gray-500">
-            You haven’t uploaded any results yet.
-          </div>
+          <div class="px-4 py-14 text-center text-gray-500">You haven’t uploaded any results yet.</div>
         {% endfor %}
       </ul>
 
       <div class="mt-6">
         <a href="{% url 'portal_ui:tests_list' %}"
-           class="rounded-xl bg-gray-900/90 px-3 py-1.5 text-sm font-semibold text-white">
-          Back
-        </a>
+           class="rounded-xl bg-gray-900/90 px-3 py-1.5 text-sm font-semibold text-white">Back</a>
       </div>
     </div>
   </div>

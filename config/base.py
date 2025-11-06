@@ -113,7 +113,7 @@ USE_TZ = True
 # Login/Logout redirects
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/portal/"
-LOGOUT_REDIRECT_URL = "/portal/"
+LOGOUT_REDIRECT_URL = "/"
 
 # --- static & media ----------------------------------------------------------
 STATIC_URL = "/static/"

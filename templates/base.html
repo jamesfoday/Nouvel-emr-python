@@ -141,13 +141,8 @@
               <!-- Right: Auth + Dashboard -->
               <div class="ml-auto flex items-center gap-2">
                 {% if request.user.is_authenticated %}
-                  {# Pre-resolve possible dashboard URLs safely #}
-                  {% url 'clinicians_ui:dashboard' request.user.pk as clinician_dashboard_url %}
-                  {% url 'reception:dashboard' as reception_dashboard_url %}
-                  {% url 'patients_ui:patients_home' as patient_dashboard_url %}
-
                   <div class="hidden lg:flex items-center gap-3">
-                    {# Avatar + name chip #}
+                    <!-- Avatar + name chip -->
                     <span class="inline-flex items-center gap-2 px-2 py-1 rounded-lg bg-white/10 text-white/90">
                       <span class="inline-grid place-items-center h-6 w-6 rounded-full bg-white/20 text-xs font-semibold">
                         {{ request.user.first_name|first|default:request.user.username|first|upper }}
@@ -157,27 +152,22 @@
                       </span>
                     </span>
 
-                    {# Dashboard button: clinicians, reception, or patient #}
+                    <!-- Dashboard link -->
                     {% if request.user.is_staff or request.user.is_superuser %}
-                      {% if clinician_dashboard_url %}
-                        <a href="{{ clinician_dashboard_url }}"
-                           class="inline-flex items-center gap-2 rounded-lg bg-white text-emerald-900 px-3 py-2 text-sm font-semibold hover:bg-emerald-50 active:scale-[.99] focus:outline-none focus:ring-2 focus:ring-white/60">
-                          Dashboard
-                        </a>
-                      {% elif reception_dashboard_url %}
-                        <a href="{{ reception_dashboard_url }}"
-                           class="inline-flex items-center gap-2 rounded-lg bg-white text-emerald-900 px-3 py-2 text-sm font-semibold hover:bg-emerald-50 active:scale-[.99] focus:outline-none focus:ring-2 focus:ring-white/60">
-                          Dashboard
-                        </a>
-                      {% endif %}
-                    {% elif patient_dashboard_url %}
-                      <a href="{{ patient_dashboard_url }}"
+                      {# Staff / Clinicians → clinician console dashboard #}
+                      <a href="{% url 'clinicians_ui:dashboard' request.user.pk %}"
+                         class="inline-flex items-center gap-2 rounded-lg bg-white text-emerald-900 px-3 py-2 text-sm font-semibold hover:bg-emerald-50 active:scale-[.99] focus:outline-none focus:ring-2 focus:ring-white/60">
+                        Dashboard
+                      </a>
+                    {% else %}
+                      {# Regular patients → patient portal dashboard #}
+                      <a href="{% url 'portal_ui:home' %}"
                          class="inline-flex items-center gap-2 rounded-lg bg-white text-emerald-900 px-3 py-2 text-sm font-semibold hover:bg-emerald-50 active:scale-[.99] focus:outline-none focus:ring-2 focus:ring-white/60">
                         My Dashboard
                       </a>
                     {% endif %}
 
-                    {# Logout #}
+                    <!-- Logout -->
                     <form method="post" action="/logout/" class="m-0">
                       {% csrf_token %}
                       <button type="submit"

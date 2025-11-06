@@ -1,67 +1,73 @@
-<div id="modal-backdrop"
-     class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
-     onclick="if(event.target.id==='modal-backdrop'){ this.remove(); }">
-  <div class="w-full max-w-2xl rounded-2xl bg-white/90 backdrop-blur ring-1 ring-black/10 shadow-xl">
-    <div class="flex items-center justify-between p-4 border-b border-gray-200/70">
-      <h2 class="text-base sm:text-lg font-semibold text-gray-900">
-        {{ doc.title|default:doc.file.name|default:"Document" }}
-      </h2>
-      <button class="rounded-full hover:bg-gray-100 p-1.5"
-              onclick="document.getElementById('modal-backdrop')?.remove()"
-              aria-label="Close">
-        ✕
-      </button>
-    </div>
+{# templates/clinicians/console/documents/_modal_view.html #}
+<div class="doc-modal-root fixed inset-0 z-50">
+  <!-- Overlay -->
+  <div class="absolute inset-0 bg-black/40" onclick="closeDocModal()"></div>
 
-    <div class="p-4 space-y-3 text-sm">
-      <div class="text-gray-600">
-        {% if doc.patient %}<b>Patient:</b> {{ doc.patient.get_full_name|default:doc.patient }} · {% endif %}
-        {% if doc.created_at %}<b>Date:</b> {{ doc.created_at|date:"D, M j Y, H:i" }}{% endif %}
+  <!-- Modal content -->
+  <div class="absolute inset-0 grid place-items-center p-4">
+    <div class="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-xl">
+      <!-- Header -->
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold">
+          {{ doc.title|default:"Document" }}
+        </h2>
+        <button class="rounded p-1 hover:bg-gray-100" onclick="closeDocModal()">✕</button>
       </div>
 
-      {% if doc.file %}
-        {% with path=doc.file.name|lower %}
-          {% if path|slice:"-4:" == ".pdf" %}
-            <iframe src="{{ doc.file.url }}" class="w-full h-[60vh] rounded-xl ring-1 ring-black/10"></iframe>
-          {% elif path|slice:"-4:" == ".png" or path|slice:"-4:" == ".jpg" or path|slice:"-5:" == ".jpeg" %}
-            <img src="{{ doc.file.url }}" alt="" class="w-full max-h-[70vh] object-contain rounded-xl ring-1 ring-black/10" />
-          {% else %}
-            <div class="rounded-xl bg-gray-50 p-4 ring-1 ring-black/10">
-              <div class="text-gray-700">Preview not available. You can download the file instead.</div>
-              <a href="{{ doc.file.url }}" download
-                 class="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95">
-                Download
-              </a>
-            </div>
-          {% endif %}
-        {% endwith %}
-      {% else %}
-        <div class="rounded-xl bg-gray-50 p-4 ring-1 ring-black/10 text-gray-600">
-          No file attached.
-        </div>
-      {% endif %}
-    </div>
+      <!-- Meta line -->
+      <p class="mt-1 text-sm text-gray-600">
+        {% if doc.created_at %}
+          {{ doc.created_at|date:"D, M j Y" }} · {{ doc.created_at|time:"H:i" }}
+        {% endif %}
+        {% if doc.clinician %}
+          · {{ doc.clinician.get_full_name|default:doc.clinician.username }}
+        {% endif %}
+        {% if doc.patient %}
+          · for {{ doc.patient.get_full_name|default:doc.patient.given_name }} {{ doc.patient.family_name }}
+        {% endif %}
+      </p>
 
-    <div class="flex items-center justify-between gap-3 p-4 border-t border-gray-200/70">
-      <a href="{{ doc.file.url }}" download
-         class="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95">
-        Download
-      </a>
-      <a hx-get="{% url 'documents_ui:edit_modal' clinician.pk doc.pk %}"
-         hx-target="#modal-root" hx-swap="innerHTML"
-         class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95">
-        Edit
-      </a>
+      <!-- Body -->
+      <hr class="my-4 border-gray-200">
+      <pre class="whitespace-pre-wrap text-sm text-gray-800">
+{% firstof doc.description doc.notes doc.body "" %}
+      </pre>
+
+      <!-- Actions -->
+      <div class="mt-5 flex justify-end gap-2">
+        {% if doc.file %}
+          <a href="{{ doc.file.url }}" download
+             class="rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white hover:brightness-95">
+            Download
+          </a>
+        {% endif %}
+
+        {% if doc.share_token %}
+        <a href="{% url 'documents_ui:share' clinician.pk doc.id %}"
+           class="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">
+          Share
+        </a>
+        {% endif %}
+
+        <button
+          hx-get="{% url 'documents_ui:edit_modal' clinician.pk doc.pk %}"
+          hx-target="body"
+          hx-swap="beforeend"
+          class="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:brightness-95">
+          Edit
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-  // close on Esc
-  document.addEventListener('keydown', function escClose(e){
-    if(e.key === 'Escape'){
-      const m = document.getElementById('modal-backdrop');
-      if(m){ m.remove(); document.removeEventListener('keydown', escClose); }
-    }
-  });
+  function closeDocModal(el) {
+    const modal = el ? el.closest('.doc-modal-root') : document.querySelector('.doc-modal-root');
+    if (modal) modal.remove();
+    document.body.classList.remove('overflow-hidden');
+  }
+  (function () {
+    document.body.classList.add('overflow-hidden');
+  })();
 </script>

@@ -1,15 +1,18 @@
-<div class="fixed inset-0 z-50">
-  <!-- backdrop -->
-  <div class="absolute inset-0 bg-black/30" 
-       hx-get="this.remove()" onclick="document.getElementById('modal-root').innerHTML='';"></div>
+{# templates/portal/tests/order_detail_modal.html #}
+<div class="portal-modal-root fixed inset-0 z-50">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-black/30"
+       onclick="closePortalModal(this)"></div>
 
-  <!-- modal card -->
+  <!-- Modal card -->
   <div class="absolute inset-0 grid place-items-center p-4">
     <div class="w-full max-w-lg rounded-2xl border border-white/30 bg-white/95 shadow-2xl backdrop-blur p-5">
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-semibold text-gray-900">Lab Order Details</h2>
-        <button class="rounded-lg bg-gray-900/90 px-2 py-1 text-xs font-semibold text-white"
-                onclick="document.getElementById('modal-root').innerHTML=''">
+        <button
+          type="button"
+          class="rounded-lg bg-gray-900/90 px-2 py-1 text-xs font-semibold text-white"
+          onclick="closePortalModal(this)">
           Close
         </button>
       </div>
@@ -22,16 +25,33 @@
         {% if o.clinician %}
           <div><span class="font-medium">Clinician:</span> {{ o.clinician.get_full_name|default:o.clinician }}</div>
         {% endif %}
-        {% if o.reason %}<div><span class="font-medium">Reason:</span> {{ o.reason }}</div>{% endif %}
-        {% if o.notes %}<div><span class="font-medium">Notes:</span> {{ o.notes }}</div>{% endif %}
+        {% if o.reason %}
+          <div><span class="font-medium">Reason:</span> {{ o.reason }}</div>
+        {% endif %}
+        {% if o.notes %}
+          <div><span class="font-medium">Notes:</span> {{ o.notes }}</div>
+        {% endif %}
       </div>
 
       <div class="mt-5 flex items-center justify-end">
-        <button class="rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:brightness-95"
-                onclick="document.getElementById('modal-root').innerHTML=''">
+        <button
+          type="button"
+          class="rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:brightness-95"
+          onclick="closePortalModal(this)">
           Done
         </button>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+  function closePortalModal(el) {
+    const root = el ? el.closest('.portal-modal-root') : document.querySelector('.portal-modal-root');
+    if (root) root.remove();
+    document.body.classList.remove('overflow-hidden');
+  }
+  (function () {
+    document.body.classList.add('overflow-hidden');
+  })();
+</script>

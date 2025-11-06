@@ -30,12 +30,12 @@
       </div>
 
       <div class="mt-8">
-      <a href="{% url 'clinicians_ui:dashboard' request.user.pk %}"
-     class="inline-flex items-center gap-2 text-gray-700">
-      <span class="grid h-8 w-8 place-items-center rounded-full bg-gray-100">&lsaquo;</span>
-      Back 
-     </a>
-    </div>
+        <a href="{% url 'clinicians_ui:dashboard' request.user.pk %}"
+           class="inline-flex items-center gap-2 text-gray-700">
+          <span class="grid h-8 w-8 place-items-center rounded-full bg-gray-100">&lsaquo;</span>
+          Back
+        </a>
+      </div>
 
     </div>
   </div>
@@ -50,15 +50,38 @@
     const input  = pop?.querySelector("input");
     const copyBt = pop?.querySelector(".copy-link-btn");
 
+    if (!btn) return;
+
     const original = btn.textContent;
     btn.disabled = true;
     btn.textContent = "Generating…";
 
     try {
-      const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
-      if (!resp.ok) throw new Error(await resp.text() || `HTTP ${resp.status}`);
-      const data = await resp.json();
+      const resp = await fetch(url, {
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json"
+        }
+      });
 
+      let data = {};
+      try {
+        data = await resp.json();
+      } catch (_) {
+        data = {};
+      }
+
+      if (!resp.ok || data.ok === false || !data.link) {
+        const message =
+          (data && data.error) ||
+          "Could not generate login link. Ensure the patient has an email and the portal is configured.";
+        alert(message);
+        btn.textContent = original;
+        btn.disabled = false;
+        return;
+      }
+
+      // Success: we have data.link
       if (input) {
         input.value = data.link || "";
         pop.classList.remove("hidden");
@@ -68,23 +91,28 @@
       }
 
       btn.textContent = "Link ready";
-      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1600);
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.disabled = false;
+      }, 1600);
 
-      copyBt?.addEventListener("click", async () => {
-        if (!input?.value) return;
-        try {
-          await navigator.clipboard.writeText(input.value);
-          copyBt.textContent = "Copied";
-          setTimeout(() => (copyBt.textContent = "Copy"), 1200);
-        } catch (_) {
-          input.select();
-          document.execCommand("copy");
-        }
-      }, { once: true });
+      if (copyBt) {
+        copyBt.addEventListener("click", async () => {
+          if (!input?.value) return;
+          try {
+            await navigator.clipboard.writeText(input.value);
+            copyBt.textContent = "Copied";
+            setTimeout(() => (copyBt.textContent = "Copy"), 1200);
+          } catch (_) {
+            input.select();
+            document.execCommand("copy");
+          }
+        }, { once: true });
+      }
 
     } catch (e) {
       console.error(e);
-      alert("Could not generate login link. Ensure the patient has an email.");
+      alert("Could not generate login link (network error).");
       btn.textContent = original;
       btn.disabled = false;
     }

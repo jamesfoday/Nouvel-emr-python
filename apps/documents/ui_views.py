@@ -92,6 +92,9 @@ def view_document(request, pk, doc_id):
 @login_required
 @require_http_methods(["GET"])
 def doc_view_modal(request, pk, doc_id):
+    """
+    Renders the read-only document modal (View button).
+    """
     clinician = get_object_or_404(User, pk=pk, is_staff=True)
     _assert_can_view(request, clinician)
     d = get_object_or_404(Document, pk=doc_id, clinician=clinician)
@@ -103,43 +106,95 @@ def doc_view_modal(request, pk, doc_id):
     )
     return HttpResponse(html)
 
+
 @login_required
 @require_http_methods(["GET"])
 def doc_edit_modal(request, pk, doc_id):
+    """
+    Renders the Edit modal with the form.
+    """
     clinician = get_object_or_404(User, pk=pk, is_staff=True)
     _assert_can_view(request, clinician)
     d = get_object_or_404(Document, pk=doc_id, clinician=clinician)
 
     html = loader.render_to_string(
         "clinicians/console/documents/_modal_edit.html",
-        {"doc": d, "clinician": clinician},
+        {"doc": d, "clinician": clinician, "error": None},
         request,
     )
     return HttpResponse(html)
 
+
 @login_required
 @require_POST
 def doc_update(request, pk, doc_id):
+    """
+    Handles the POST from the Edit modal:
+    - updates title / description (or notes/body) if present
+    - optionally replaces the file (with the same validation as upload)
+    - returns the *view* modal partial so the user sees the updated doc.
+    """
     clinician = get_object_or_404(User, pk=pk, is_staff=True)
     _assert_can_view(request, clinician)
     d = get_object_or_404(Document, pk=doc_id, clinician=clinician)
 
-    # Minimal editable fields (adjust to your model)
     title = request.POST.get("title", "").strip()
-    notes = request.POST.get("notes", "").strip()
+    description = request.POST.get("description", "").strip()
 
     changed = False
-    if hasattr(d, "title"):
+
+    # Title
+    if hasattr(d, "title") and title and d.title != title:
         d.title = title
         changed = True
-    if hasattr(d, "notes"):
-        d.notes = notes
-        changed = True
+
+    # Description / notes / body – use whichever field your model has
+    if description:
+        if hasattr(d, "description"):
+            if getattr(d, "description") != description:
+                d.description = description
+                changed = True
+        elif hasattr(d, "notes"):
+            if getattr(d, "notes") != description:
+                d.notes = description
+                changed = True
+        elif hasattr(d, "body"):
+            if getattr(d, "body") != description:
+                d.body = description
+                changed = True
+
+    # Optional file replace
+    f = request.FILES.get("file")
+    if f:
+        allowed = {
+            "application/pdf",
+            "image/png",
+            "image/jpeg",
+            "image/jpg",
+        }
+        if f.content_type not in allowed or f.size > 10 * 1024 * 1024:
+            # Re-render edit modal with error
+            html = loader.render_to_string(
+                "clinicians/console/documents/_modal_edit.html",
+                {
+                    "doc": d,
+                    "clinician": clinician,
+                    "error": "Only PDF/PNG/JPG up to 10MB are allowed.",
+                },
+                request,
+            )
+            return HttpResponseBadRequest(html)
+
+        if hasattr(d, "file"):
+            d.file = f
+            changed = True
+
     if changed:
-        d.updated_at = timezone.now() if hasattr(d, "updated_at") else d.updated_at
+        if hasattr(d, "updated_at"):
+            d.updated_at = timezone.now()
         d.save()
 
-    # Return the updated view modal so the user sees changes immediately
+    # After successful update, show the *view* modal again
     html = loader.render_to_string(
         "clinicians/console/documents/_modal_view.html",
         {"doc": d, "clinician": clinician},
